@@ -3,12 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Show Light</title>
+    <title>Show Light Client</title>
     <style>
         body { margin: 0; background: #000; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: sans-serif; transition: background 0.3s; }
         #info { position: absolute; bottom: 20px; text-align: center; pointer-events: none;}
-        #received-img { max-width: 100%; max-height: 100vh; display: none; object-fit: contain; }
         h1 { color: white; font-size: 1.2rem; }
+        
+        #received-img { 
+            max-width: 100%; 
+            max-height: 100vh; 
+            display: none; 
+            object-fit: contain; 
+            /* Filtre pour Gobos colorables: mélange l'image avec la couleur du body */
+            filter: invert(1); 
+            mix-blend-mode: screen; 
+        }
+
+        /* KEYFRAMES pour le Strobe et le Pulse */
+        @keyframes strobe-fast {
+            from { background-color: white; }
+            to { background-color: black; }
+        }
+        @keyframes strobe-medium {
+            0% { background-color: white; }
+            50% { background-color: black; }
+            100% { background-color: white; }
+        }
+        @keyframes pulse-slow {
+            0% { background-color: white; opacity: 1; }
+            50% { background-color: white; opacity: 0.3; }
+            100% { background-color: white; opacity: 1; }
+        }
+
+        /* CLASSES APPLIQUÉES PAR JAVASCRIPT */
+        .strobe-fast {
+            animation: strobe-fast 0.1s infinite alternate;
+        }
+        .strobe-medium {
+            animation: strobe-medium 0.4s infinite;
+        }
+        .pulse-slow {
+            animation: pulse-slow 2s infinite;
+        }
     </style>
 </head>
 <body>
@@ -22,7 +58,12 @@
     <script>
         const socket = io();
         let myId = "";
-        
+        let myGroup = ""; 
+
+        // LOGIQUE TIMELINE
+        let timeline = []; // Liste des événements chargés
+        let nextEventIndex = 0; // Pointeur sur le prochain événement à déclencher
+
         // Empêcher l'écran de s'éteindre (Wake Lock)
         async function keepScreenOn() {
             try { await navigator.wakeLock.request('screen'); } catch (err) {}
@@ -31,12 +72,36 @@
 
         socket.on('welcome', (data) => {
             myId = data.id;
+            myGroup = data.group;
             document.getElementById('details').innerHTML = `ID: <strong>${data.id}</strong> <br> ${data.group}`;
         });
 
-        socket.on('execute', (data) => doAction(data));
+        // Réception de la Timeline et initialisation du pointeur
+        socket.on('timeline-load', (data) => {
+            timeline = data.timeline.sort((a, b) => a.time_ms - b.time_ms);
+            nextEventIndex = 0;
+            console.log("Timeline chargée, prêt à la synchronisation.");
+        });
+
+        // Réception du Time Code (synchronisation)
+        socket.on('timecode-sync', (data) => {
+            const currentTime = data.time_ms;
+            
+            // Déclenche tous les événements dont le temps est passé
+            while (nextEventIndex < timeline.length && timeline[nextEventIndex].time_ms <= currentTime) {
+                const event = timeline[nextEventIndex];
+                
+                // Vérifier le ciblage (uniquement 'all' ou son propre groupe)
+                if (event.target === 'all' || event.target === myGroup) {
+                    doAction(event); 
+                }
+                
+                nextEventIndex++;
+            }
+        });
         
-        // Vérifie si l'ordre est pour notre ID spécifique
+        // Contrôle manuel
+        socket.on('execute', (data) => doAction(data));
         socket.on('execute-specific', (data) => {
             if (data.target === myId) doAction(data);
         });
@@ -45,15 +110,41 @@
             const img = document.getElementById('received-img');
             const info = document.getElementById('info');
             
+            // 1. Réinitialisation des effets
+            document.body.className = ''; 
+            
             if (data.type === 'color') {
+                // Couleur unie
                 img.style.display = 'none';
                 document.body.style.backgroundColor = data.value;
                 info.style.opacity = '0.2';
             } else if (data.type === 'image') {
-                document.body.style.backgroundColor = '#000';
+                // Gobo colorable : utilise data.color comme couleur de fond/filtre
+                const filterColor = data.color || '#FFFFFF';
+                
+                document.body.style.backgroundColor = filterColor; 
+                
                 img.src = data.value;
                 img.style.display = 'block';
                 info.style.opacity = '0';
+            } else if (data.type === 'effect') { 
+                // Effets (Strobe/Pulse ou OFF)
+                applyEffect(data.value);
+                img.style.display = 'none'; 
+                // Seul le STROBE_FAST/MEDIUM utilise l'alternance noir/blanc. Le pulse doit avoir le fond blanc pour se voir.
+                document.body.style.backgroundColor = (data.value === 'PULSE_SLOW' ? 'white' : 'black'); 
+            }
+        }
+
+        function applyEffect(effectName) {
+            const body = document.body;
+            
+            if (effectName === 'STROBE_FAST') {
+                body.classList.add('strobe-fast');
+            } else if (effectName === 'STROBE_MEDIUM') {
+                body.classList.add('strobe-medium');
+            } else if (effectName === 'PULSE_SLOW') {
+                body.classList.add('pulse-slow');
             }
         }
     </script>
