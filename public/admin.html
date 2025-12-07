@@ -1,75 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Admin - Contrôle</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Show Light Client</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #222; color: white; max-width: 600px; margin: auto; }
-        .card { background: #333; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        button, select, input { width: 100%; padding: 12px; margin-top: 5px; font-size: 16px; border-radius: 5px; border: none; }
-        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; }
-        input[type="color"] { height: 50px; padding: 0; }
-        #count { float: right; color: #0f0; }
+        body { margin: 0; background: #000; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: sans-serif; transition: background 0.3s; }
+        #info { position: absolute; bottom: 20px; text-align: center; pointer-events: none;}
+        h1 { color: white; font-size: 1.2rem; }
+        
+        #received-img { 
+            max-width: 100%; 
+            max-height: 100vh; 
+            display: none; 
+            object-fit: contain; 
+            /* Filtre pour Gobos colorables: mélange l'image avec la couleur du body */
+            filter: invert(1); 
+            mix-blend-mode: screen; 
+        }
+
+        /* KEYFRAMES pour le Strobe et le Pulse */
+        @keyframes strobe-fast {
+            from { background-color: white; }
+            to { background-color: black; }
+        }
+        @keyframes strobe-medium {
+            0% { background-color: white; }
+            50% { background-color: black; }
+            100% { background-color: white; }
+        }
+        @keyframes pulse-slow {
+            0% { background-color: white; opacity: 1; }
+            50% { background-color: white; opacity: 0.3; }
+            100% { background-color: white; opacity: 1; }
+        }
+
+        /* CLASSES APPLIQUÉES PAR JAVASCRIPT */
+        .strobe-fast {
+            animation: strobe-fast 0.1s infinite alternate;
+        }
+        .strobe-medium {
+            animation: strobe-medium 0.4s infinite;
+        }
+        .pulse-slow {
+            animation: pulse-slow 2s infinite;
+        }
     </style>
 </head>
 <body>
-    <h3>🎛️ Régie <span id="count">0 connectés</span></h3>
-
-    <div class="card">
-        <label>Cibler qui ?</label>
-        <select id="target">
-            <option value="all">Tout le monde</option>
-            <option value="Groupe A">Groupe A (50%)</option>
-            <option value="Groupe B">Groupe B (50%)</option>
-            <option value="ID">ID Spécifique...</option>
-        </select>
-        <input type="text" id="targetId" placeholder="Entrer l'ID (ex: A4F2)" style="display:none; margin-top:5px;">
-    </div>
-
-    <div class="card">
-        <label>Couleur</label>
-        <input type="color" id="color" value="#ff0000">
-        <button onclick="send('color')">Envoyer Couleur</button>
-    </div>
-
-    <div class="card">
-        <label>Image</label>
-        <input type="file" id="file" accept="image/*">
-        <button onclick="send('image')" style="background:#28a745;">Envoyer Image</button>
+    <img id="received-img" src="">
+    <div id="info">
+        <h1>Connecté...</h1>
+        <p id="details">En attente du signal...</p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let myId = "";
+        let myGroup = ""; 
 
-        socket.on('update-count', (data) => {
-            document.getElementById('count').innerText = (data.count - 1) + " connectés";
+        // LOGIQUE TIMELINE
+        let timeline = []; // Liste des événements chargés
+        let nextEventIndex = 0; // Pointeur sur le prochain événement à déclencher
+
+        // Empêcher l'écran de s'éteindre (Wake Lock)
+        async function keepScreenOn() {
+            try { await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+        document.addEventListener('click', keepScreenOn);
+
+        socket.on('welcome', (data) => {
+            myId = data.id;
+            myGroup = data.group;
+            document.getElementById('details').innerHTML = `ID: <strong>${data.id}</strong> <br> ${data.group}`;
         });
 
-        document.getElementById('target').addEventListener('change', (e) => {
-            document.getElementById('targetId').style.display = e.target.value === 'ID' ? 'block' : 'none';
+        // Réception de la Timeline et initialisation du pointeur
+        socket.on('timeline-load', (data) => {
+            timeline = data.timeline.sort((a, b) => a.time_ms - b.time_ms);
+            nextEventIndex = 0;
+            console.log("Timeline chargée, prêt à la synchronisation.");
         });
 
-        function send(type) {
-            let target = document.getElementById('target').value;
-            if (target === 'ID') target = document.getElementById('targetId').value.toUpperCase();
+        // Réception du Time Code (synchronisation)
+        socket.on('timecode-sync', (data) => {
+            const currentTime = data.time_ms;
             
-            let value;
-            if (type === 'color') {
-                value = document.getElementById('color').value;
-                emit(target, type, value);
-            } else {
-                const file = document.getElementById('file').files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => emit(target, type, e.target.result);
-                    reader.readAsDataURL(file);
+            // Déclenche tous les événements dont le temps est passé
+            while (nextEventIndex < timeline.length && timeline[nextEventIndex].time_ms <= currentTime) {
+                const event = timeline[nextEventIndex];
+                
+                // Vérifier le ciblage (uniquement 'all' ou son propre groupe)
+                if (event.target === 'all' || event.target === myGroup) {
+                    doAction(event); 
                 }
+                
+                nextEventIndex++;
+            }
+        });
+        
+        // Contrôle manuel
+        socket.on('execute', (data) => doAction(data));
+        socket.on('execute-specific', (data) => {
+            if (data.target === myId) doAction(data);
+        });
+
+        function doAction(data) {
+            const img = document.getElementById('received-img');
+            const info = document.getElementById('info');
+            
+            // 1. Réinitialisation des effets
+            document.body.className = ''; 
+            
+            if (data.type === 'color') {
+                // Couleur unie
+                img.style.display = 'none';
+                document.body.style.backgroundColor = data.value;
+                info.style.opacity = '0.2';
+            } else if (data.type === 'image') {
+                // Gobo colorable : utilise data.color comme couleur de fond/filtre
+                const filterColor = data.color || '#FFFFFF';
+                
+                document.body.style.backgroundColor = filterColor; 
+                
+                img.src = data.value;
+                img.style.display = 'block';
+                info.style.opacity = '0';
+            } else if (data.type === 'effect') { 
+                // Effets (Strobe/Pulse ou OFF)
+                applyEffect(data.value);
+                img.style.display = 'none'; 
+                // Seul le STROBE_FAST/MEDIUM utilise l'alternance noir/blanc. Le pulse doit avoir le fond blanc pour se voir.
+                document.body.style.backgroundColor = (data.value === 'PULSE_SLOW' ? 'white' : 'black'); 
             }
         }
 
-        function emit(target, type, value) {
-            socket.emit('admin-order', { target, type, value });
+        function applyEffect(effectName) {
+            const body = document.body;
+            
+            if (effectName === 'STROBE_FAST') {
+                body.classList.add('strobe-fast');
+            } else if (effectName === 'STROBE_MEDIUM') {
+                body.classList.add('strobe-medium');
+            } else if (effectName === 'PULSE_SLOW') {
+                body.classList.add('pulse-slow');
+            }
         }
     </script>
 </body>
