@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Contrôle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #222; color: white; max-width: 600px; margin: auto; }
+        .card { background: #333; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        button, select, input { width: 100%; padding: 12px; margin-top: 5px; font-size: 16px; border-radius: 5px; border: none; }
+        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; }
+        input[type="color"] { height: 50px; padding: 0; }
+        #count { float: right; color: #0f0; }
+    </style>
+</head>
+<body>
+    <h3>🎛️ Régie <span id="count">0 connectés</span></h3>
+
+    <div class="card">
+        <label>Cibler qui ?</label>
+        <select id="target">
+            <option value="all">Tout le monde</option>
+            <option value="Groupe A">Groupe A (50%)</option>
+            <option value="Groupe B">Groupe B (50%)</option>
+            <option value="ID">ID Spécifique...</option>
+        </select>
+        <input type="text" id="targetId" placeholder="Entrer l'ID (ex: A4F2)" style="display:none; margin-top:5px;">
+    </div>
+
+    <div class="card">
+        <label>Couleur</label>
+        <input type="color" id="color" value="#ff0000">
+        <button onclick="send('color')">Envoyer Couleur</button>
+    </div>
+
+    <div class="card">
+        <label>Image</label>
+        <input type="file" id="file" accept="image/*">
+        <button onclick="send('image')" style="background:#28a745;">Envoyer Image</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('update-count', (data) => {
+            document.getElementById('count').innerText = (data.count - 1) + " connectés";
+        });
+
+        document.getElementById('target').addEventListener('change', (e) => {
+            document.getElementById('targetId').style.display = e.target.value === 'ID' ? 'block' : 'none';
+        });
+
+        function send(type) {
+            let target = document.getElementById('target').value;
+            if (target === 'ID') target = document.getElementById('targetId').value.toUpperCase();
+            
+            let value;
+            if (type === 'color') {
+                value = document.getElementById('color').value;
+                emit(target, type, value);
+            } else {
+                const file = document.getElementById('file').files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => emit(target, type, e.target.result);
+                    reader.readAsDataURL(file);
+                }
+            }
+        }
+
+        function emit(target, type, value) {
+            socket.emit('admin-order', { target, type, value });
+        }
+    </script>
+</body>
+</html>
