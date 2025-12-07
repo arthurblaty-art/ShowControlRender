@@ -1,152 +1,270 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Show Light Client</title>
+    <title>Admin - Régie Spectacle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { margin: 0; background: #000; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: sans-serif; transition: background 0.3s; }
-        #info { position: absolute; bottom: 20px; text-align: center; pointer-events: none;}
-        h1 { color: white; font-size: 1.2rem; }
+        body { font-family: sans-serif; padding: 20px; background: #222; color: white; max-width: 800px; margin: auto; }
+        .card { background: #333; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        button, select, input:not([type="color"]):not([type="file"]) { width: 100%; padding: 12px; margin-top: 5px; font-size: 16px; border-radius: 5px; border: none; }
+        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; }
+        input[type="color"] { height: 50px; padding: 0; }
+        #count { float: right; color: #0f0; font-weight: bold; }
         
-        #received-img { 
-            max-width: 100%; 
-            max-height: 100vh; 
-            display: none; 
-            object-fit: contain; 
-            /* Filtre pour Gobos colorables: mélange l'image avec la couleur du body */
-            filter: invert(1); 
-            mix-blend-mode: screen; 
-        }
-
-        /* KEYFRAMES pour le Strobe et le Pulse */
-        @keyframes strobe-fast {
-            from { background-color: white; }
-            to { background-color: black; }
-        }
-        @keyframes strobe-medium {
-            0% { background-color: white; }
-            50% { background-color: black; }
-            100% { background-color: white; }
-        }
-        @keyframes pulse-slow {
-            0% { background-color: white; opacity: 1; }
-            50% { background-color: white; opacity: 0.3; }
-            100% { background-color: white; opacity: 1; }
-        }
-
-        /* CLASSES APPLIQUÉES PAR JAVASCRIPT */
-        .strobe-fast {
-            animation: strobe-fast 0.1s infinite alternate;
-        }
-        .strobe-medium {
-            animation: strobe-medium 0.4s infinite;
-        }
-        .pulse-slow {
-            animation: pulse-slow 2s infinite;
-        }
+        /* Styles pour la Timeline */
+        #audio-player { width: 100%; margin: 10px 0; }
+        #events-list { max-height: 250px; overflow-y: auto; background: #1c1c1c; padding: 10px; border-radius: 5px; }
+        .timeline-event { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #444; font-size: 0.9em; }
+        .event-action { color: #f00; cursor: pointer; }
     </style>
 </head>
 <body>
-    <img id="received-img" src="">
-    <div id="info">
-        <h1>Connecté...</h1>
-        <p id="details">En attente du signal...</p>
+    <h3>🎛️ Régie Spectacle <span id="count">1 connecté</span></h3>
+
+    <div class="card">
+        <h4>🎵 Séquence Audio & Time Code</h4>
+        <input type="file" id="audioFile" accept="audio/*" onchange="loadAudio()">
+        <audio id="audio-player" controls></audio>
+        
+        <div id="timeline-controls">
+            <button onclick="startSync()" style="background:#dc3545;">🔴 START SYNC</button>
+            <p>Temps actuel: <span id="current-time">00:00.000</span></p>
+        </div>
     </div>
 
+    <div class="card">
+        <h4>➕ Ajouter un Événement</h4>
+        <input type="number" id="event-time-ms" placeholder="Temps (ms) Ex: 3500">
+        
+        <label for="preset-action" style="margin-top:10px; display: block;">Action Prédéfinie (Gobo, Couleur unie, Effet)</label>
+        <select id="preset-action">
+            </select>
+
+        <label for="gobo-filter-color" style="margin-top:10px; display: block;">Couleur du Filtre</label>
+        <input type="color" id="gobo-filter-color" value="#FFFFFF">
+        
+        <select id="event-target">
+            <option value="all">Tout le monde</option>
+            <option value="Groupe A">Groupe A</option>
+            <option value="Groupe B">Groupe B</option>
+        </select>
+        <button onclick="addEvent()">Ajouter à la Timeline</button>
+    </div>
+    
+    <div class="card">
+        <h4>🔁 Délay / Chase (Effet de Propagation A -> B)</h4>
+        <select id="chase-action">
+            </select>
+        <input type="number" id="chase-delay-ms" value="100" placeholder="Délay entre les groupes (ms)">
+        <button onclick="addChaseEvent()">Ajouter Séquence Délay</button>
+    </div>
+
+    <div class="card">
+        <h4>🕰️ Timeline du Projet (<span id="total-events">0</span> Événements)</h4>
+        <div id="events-list">
+            </div>
+    </div>
+    
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let myId = "";
-        let myGroup = ""; 
+        let timeline = [];
+        const audioPlayer = document.getElementById('audio-player');
+        let syncInterval;
 
-        // LOGIQUE TIMELINE
-        let timeline = []; // Liste des événements chargés
-        let nextEventIndex = 0; // Pointeur sur le prochain événement à déclencher
-
-        // Empêcher l'écran de s'éteindre (Wake Lock)
-        async function keepScreenOn() {
-            try { await navigator.wakeLock.request('screen'); } catch (err) {}
-        }
-        document.addEventListener('click', keepScreenOn);
-
-        socket.on('welcome', (data) => {
-            myId = data.id;
-            myGroup = data.group;
-            document.getElementById('details').innerHTML = `ID: <strong>${data.id}</strong> <br> ${data.group}`;
-        });
-
-        // Réception de la Timeline et initialisation du pointeur
-        socket.on('timeline-load', (data) => {
-            timeline = data.timeline.sort((a, b) => a.time_ms - b.time_ms);
-            nextEventIndex = 0;
-            console.log("Timeline chargée, prêt à la synchronisation.");
-        });
-
-        // Réception du Time Code (synchronisation)
-        socket.on('timecode-sync', (data) => {
-            const currentTime = data.time_ms;
+        // --- BIBLIOTHÈQUE DE GOBOS ET EFFETS PRÉDÉFINIS ---
+        const PRESET_LIBRARY = [
+            // Couleurs Unies
+            { name: "Couleur Unie", type: "color", value: "use_color_input" }, 
             
-            // Déclenche tous les événements dont le temps est passé
-            while (nextEventIndex < timeline.length && timeline[nextEventIndex].time_ms <= currentTime) {
-                const event = timeline[nextEventIndex];
+            // Effets Spéciaux (Type 'effect')
+            { name: "Effet: Arrêt des Effets/Retour au Noir", type: "effect", value: "OFF" },
+            { name: "Effet: Strobe Rapide", type: "effect", value: "STROBE_FAST" },
+            { name: "Effet: Strobe Moyen", type: "effect", value: "STROBE_MEDIUM" },
+            { name: "Effet: Pulse Lent (Blanc)", type: "effect", value: "PULSE_SLOW" },
+            
+            // Gobos (Images - REMPLACEZ CES URLS PUBLIQUES !)
+            { name: "Gobo: Logo du Groupe (URL à remplacer)", type: "image", value: "https://votre-url-gobo-1.com/logo.png" },
+            { name: "Gobo: Ciel Étoilé (URL à remplacer)", type: "image", value: "https://votre-url-gobo-2.com/stars.png" },
+            { name: "Gobo: Texture (URL à remplacer)", type: "image", value: "https://votre-url-gobo-3.com/texture.png" }
+        ];
+        
+        // Actions disponibles pour les séquences Chase (Délay)
+        const CHASE_ACTIONS = PRESET_LIBRARY.filter(p => p.type !== 'image'); 
+        // ----------------------------------------------------
+
+        // Mise à jour du compteur de connectés (sans l'admin)
+        socket.on('update-count', (data) => {
+            document.getElementById('count').innerText = (data.count - 1) + " connectés";
+        });
+
+        // =================================================================
+        // LOGIQUE D'INTERFACE ET DE TIMELINE
+        // =================================================================
+
+        function initializePresets() {
+            const select = document.getElementById('preset-action');
+            select.innerHTML = '';
+            PRESET_LIBRARY.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = index; 
+                option.innerText = item.name;
+                select.appendChild(option);
+            });
+        }
+        
+        function initializeChasePresets() {
+            const select = document.getElementById('chase-action');
+            select.innerHTML = '';
+            CHASE_ACTIONS.forEach((item, index) => {
+                const option = document.createElement('option');
+                option.value = index; 
+                option.innerText = item.name;
+                select.appendChild(option);
+            });
+        }
+
+        // Ajoute l'événement à la timeline (dans le tableau local)
+        function pushEvent(timeMs, target, type, value, color = null) {
+            timeline.push({ time_ms: timeMs, target, type, value, color: color });
+            timeline.sort((a, b) => a.time_ms - b.time_ms);
+            renderTimeline();
+        }
+        
+        function addEvent() {
+            const timeMs = parseInt(document.getElementById('event-time-ms').value);
+            const target = document.getElementById('event-target').value;
+            const presetIndex = parseInt(document.getElementById('preset-action').value);
+            const filterColor = document.getElementById('gobo-filter-color').value;
+
+            if (isNaN(timeMs)) return alert("Entrez un temps en millisecondes valide.");
+            
+            const preset = PRESET_LIBRARY[presetIndex]; 
+            let finalValue = preset.value;
+            let finalColor = null;
+
+            if (preset.type === 'color') {
+                // Pour les couleurs unies, la valeur est le code couleur du filtre
+                finalValue = filterColor; 
+            }
+            
+            if (preset.type === 'image') {
+                // Pour les Gobos, la couleur est passée dans la propriété 'color'
+                finalColor = filterColor; 
+            }
+            
+            pushEvent(timeMs, target, preset.type, finalValue, finalColor);
+        }
+        
+        function addChaseEvent() {
+            const timeMs = parseInt(document.getElementById('event-time-ms').value);
+            const delayMs = parseInt(document.getElementById('chase-delay-ms').value);
+            const presetIndex = parseInt(document.getElementById('chase-action').value);
+            const filterColor = document.getElementById('gobo-filter-color').value;
+
+            if (isNaN(timeMs) || isNaN(delayMs)) return alert("Entrez des valeurs de temps valides.");
+            
+            const preset = CHASE_ACTIONS[presetIndex];
+            
+            let finalValue = preset.value;
+            let finalColor = null;
+
+            if (preset.type === 'color') {
+                finalValue = filterColor; 
+                finalColor = null;
+            }
+
+            // 1. Événement pour le Groupe A
+            pushEvent(timeMs, "Groupe A", preset.type, finalValue, finalColor);
+
+            // 2. Événement pour le Groupe B avec le décalage
+            const delayedTime = timeMs + delayMs;
+            pushEvent(delayedTime, "Groupe B", preset.type, finalValue, finalColor);
+
+            alert(`Séquence Délay (${delayMs}ms) ajoutée : Groupe A à ${timeMs}ms, Groupe B à ${delayedTime}ms.`);
+        }
+        
+        // Affiche la timeline sur l'interface
+        function renderTimeline() {
+            const list = document.getElementById('events-list');
+            list.innerHTML = '';
+            document.getElementById('total-events').innerText = timeline.length;
+
+            timeline.forEach((event, index) => {
+                const div = document.createElement('div');
+                div.className = 'timeline-event';
+                const timeStr = (event.time_ms / 1000).toFixed(3);
                 
-                // Vérifier le ciblage (uniquement 'all' ou son propre groupe)
-                if (event.target === 'all' || event.target === myGroup) {
-                    doAction(event); 
+                let detail = `Type: ${event.type.toUpperCase()}, Valeur: `;
+                
+                if (event.type === 'color') {
+                    detail += `<span style="background:${event.value}; color:${event.value==='#FFFFFF' ? '#000' : '#FFF'}; padding:2px 5px;">${event.value}</span>`;
+                } else if (event.type === 'effect') {
+                    detail += `**${event.value}**`;
+                } else if (event.type === 'image') {
+                    const colorDisplay = `<span style="background:${event.color}; color:${event.color==='#FFFFFF' ? '#000' : '#FFF'}; padding:2px 5px;">${event.color}</span>`;
+                    detail += `[IMAGE] Filtrée par ${colorDisplay}`;
                 }
                 
-                nextEventIndex++;
-            }
-        });
+                div.innerHTML = `
+                    <span>${timeStr}s (${event.target}) : ${detail}</span>
+                    <span class="event-action" onclick="removeEvent(${index})">❌</span>
+                `;
+                list.appendChild(div);
+            });
+        }
         
-        // Contrôle manuel
-        socket.on('execute', (data) => doAction(data));
-        socket.on('execute-specific', (data) => {
-            if (data.target === myId) doAction(data);
-        });
-
-        function doAction(data) {
-            const img = document.getElementById('received-img');
-            const info = document.getElementById('info');
-            
-            // 1. Réinitialisation des effets
-            document.body.className = ''; 
-            
-            if (data.type === 'color') {
-                // Couleur unie
-                img.style.display = 'none';
-                document.body.style.backgroundColor = data.value;
-                info.style.opacity = '0.2';
-            } else if (data.type === 'image') {
-                // Gobo colorable : utilise data.color comme couleur de fond/filtre
-                const filterColor = data.color || '#FFFFFF';
-                
-                document.body.style.backgroundColor = filterColor; 
-                
-                img.src = data.value;
-                img.style.display = 'block';
-                info.style.opacity = '0';
-            } else if (data.type === 'effect') { 
-                // Effets (Strobe/Pulse ou OFF)
-                applyEffect(data.value);
-                img.style.display = 'none'; 
-                // Seul le STROBE_FAST/MEDIUM utilise l'alternance noir/blanc. Le pulse doit avoir le fond blanc pour se voir.
-                document.body.style.backgroundColor = (data.value === 'PULSE_SLOW' ? 'white' : 'black'); 
+        function removeEvent(index) {
+            timeline.splice(index, 1);
+            renderTimeline();
+        }
+        
+        // Charge le fichier audio dans le lecteur
+        function loadAudio() {
+            const file = document.getElementById('audioFile').files[0];
+            if (file) {
+                audioPlayer.src = URL.createObjectURL(file);
             }
         }
 
-        function applyEffect(effectName) {
-            const body = document.body;
-            
-            if (effectName === 'STROBE_FAST') {
-                body.classList.add('strobe-fast');
-            } else if (effectName === 'STROBE_MEDIUM') {
-                body.classList.add('strobe-medium');
-            } else if (effectName === 'PULSE_SLOW') {
-                body.classList.add('pulse-slow');
+        // =================================================================
+        // LOGIQUE DE SYNCHRONISATION (TIME CODE)
+        // =================================================================
+
+        function startSync() {
+            if (audioPlayer.paused) {
+                alert("Veuillez charger et lancer la lecture de l'audio d'abord.");
+                return;
             }
+            if (timeline.length === 0) {
+                 alert("Ajoutez des événements à la timeline avant de commencer.");
+                return;
+            }
+
+            // 1. Envoyer la timeline aux clients
+            socket.emit('timeline-load', { timeline: timeline });
+            
+            // 2. Lancer l'intervalle de synchronisation (toutes les 50ms)
+            if (syncInterval) clearInterval(syncInterval);
+            
+            syncInterval = setInterval(() => {
+                const currentTime = Math.round(audioPlayer.currentTime * 1000); // Temps en millisecondes
+                document.getElementById('current-time').innerText = (currentTime / 1000).toFixed(3);
+                
+                // Envoyer le Time Code aux clients
+                socket.emit('timecode-sync', { time_ms: currentTime });
+
+                if (audioPlayer.ended) {
+                    clearInterval(syncInterval);
+                    console.log("Lecture terminée, synchronisation arrêtée.");
+                }
+            }, 50); // Mettre à jour toutes les 50 millisecondes
         }
+        
+        // Initialiser l'interface au chargement
+        initializePresets();
+        initializeChasePresets();
+        renderTimeline();
     </script>
 </body>
 </html>
