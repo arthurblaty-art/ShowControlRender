@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Show Light</title>
+    <style>
+        body { margin: 0; background: #000; color: #555; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: sans-serif; transition: background 0.3s; }
+        #info { position: absolute; bottom: 20px; text-align: center; pointer-events: none;}
+        #received-img { max-width: 100%; max-height: 100vh; display: none; object-fit: contain; }
+        h1 { color: white; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <img id="received-img" src="">
+    <div id="info">
+        <h1>Connecté...</h1>
+        <p id="details">En attente du signal...</p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let myId = "";
+        
+        // Empêcher l'écran de s'éteindre (Wake Lock)
+        async function keepScreenOn() {
+            try { await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+        document.addEventListener('click', keepScreenOn);
+
+        socket.on('welcome', (data) => {
+            myId = data.id;
+            document.getElementById('details').innerHTML = `ID: <strong>${data.id}</strong> <br> ${data.group}`;
+        });
+
+        socket.on('execute', (data) => doAction(data));
+        
+        // Vérifie si l'ordre est pour notre ID spécifique
+        socket.on('execute-specific', (data) => {
+            if (data.target === myId) doAction(data);
+        });
+
+        function doAction(data) {
+            const img = document.getElementById('received-img');
+            const info = document.getElementById('info');
+            
+            if (data.type === 'color') {
+                img.style.display = 'none';
+                document.body.style.backgroundColor = data.value;
+                info.style.opacity = '0.2';
+            } else if (data.type === 'image') {
+                document.body.style.backgroundColor = '#000';
+                img.src = data.value;
+                img.style.display = 'block';
+                info.style.opacity = '0';
+            }
+        }
+    </script>
+</body>
+</html>
