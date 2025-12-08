@@ -84,7 +84,7 @@
         .btn-action:hover { filter: brightness(1.1); }
         .btn-action:active { transform: scale(0.99); }
         
-        /* NOUVEAU: Style pour le Curseur de Fréquence */
+        /* Style pour le Curseur de Fréquence */
         input[type="range"] {
             -webkit-appearance: none;
             height: 8px;
@@ -399,13 +399,12 @@
         let isDrawing = false;
         let startX, startY;
         
-        // Mise à jour de la bibliothèque pour inclure le STROBE_RND sans couleur aléatoire
         const PRESET_LIBRARY = [
             { name: "Couleur Unie", type: "color", value: "use_color_input" }, 
             { name: "Effet: Arrêt des Effets/Retour au Noir", type: "effect", value: "OFF" },
             { name: "Effet: Strobe Couleur Rapide", type: "effect", value: "STROBE_FAST" },
             { name: "Effet: Strobe Couleur Moyen", type: "effect", value: "STROBE_MEDIUM" },
-            { name: "Effet: Strobe RND (Rythme Aléatoire)", type: "effect", value: "STROBE_RND" },
+            { name: "Effet: Strobe RND (Rythme Aléatoire)", type: "effect", value: "STROBE_RND" }, // Ce preset utilise maintenant le rythme fixe du curseur pour la stabilité.
             { name: "Effet: Pulse Lent", type: "effect", value: "PULSE_SLOW" },
             { name: "Gobo: Logo (Exemple)", type: "image", value: "https://via.placeholder.com/200?text=LOGO" },
         ];
@@ -420,10 +419,8 @@
             document.getElementById(`freq-value-${prefix}`).innerText = `${value} ms`;
         }
         document.addEventListener("DOMContentLoaded", () => {
-             // Initialisation des valeurs de fréquence
              updateFreqValue('timecode');
              updateFreqValue('prog');
-             // Reste de l'init...
              document.getElementById('Timecode').style.display = "block"; 
              initCanvas();
              initializePresets();
@@ -473,7 +470,7 @@
 
 
         // =================================================================
-        // PARTIE 2: WAVESURFER & TIMECODE (Timeline)
+        // PARTIE 2: WAVESURFER & TIMECODE (Timeline) - Inclut la correction loadAudio
         // =================================================================
         
         function initWavesurfer() {
@@ -512,11 +509,34 @@
             wavesurfer.on('ready', () => { renderTimeline(); });
         }
 
-        function loadAudio() {
-            const file = document.getElementById('audioFile').files[0];
+        // CORRECTION: Utilisation de fetch pour uploader l'audio au serveur avant de charger
+        async function loadAudio() {
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+
             if (file) { 
                 if(!wavesurfer) initWavesurfer(); 
-                wavesurfer.load(URL.createObjectURL(file)); 
+                
+                const formData = new FormData();
+                formData.append('audioFile', file);
+
+                try {
+                    const response = await fetch('/upload-audio', { 
+                        method: 'POST', 
+                        body: formData 
+                    });
+                    const data = await response.json();
+
+                    if (data.success) {
+                        wavesurfer.load(data.url); 
+                        console.log(`Audio chargé depuis : ${data.url}`);
+                    } else {
+                        alert(`Erreur d'upload: ${data.message}`);
+                    }
+                } catch (error) {
+                    console.error('Erreur lors du téléchargement de l\'audio:', error);
+                    alert("Erreur de connexion au serveur pour l'upload. Vérifiez que 'multer' est installé et configuré dans server.js.");
+                }
             }
         }
         
@@ -950,7 +970,6 @@
                 btn.style.setProperty('--btn-color', bgColor);
                 btn.style.color = (bgColor === '#FFFFFF' || bgColor === 'white') ? '#121212' : 'white';
 
-                // Affichage de la fréquence du Strobe dans le statut
                 let statusText = `${cue.target} | ${cue.type.toUpperCase()} | ${cue.fade_ms}ms`;
                 if (cue.value.startsWith('STROBE')) {
                      let strobeType = (cue.value === 'STROBE_RND') ? 'RND' : 'RÉGULIER';
