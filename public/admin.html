@@ -1,132 +1,507 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin - Régie Spectacle</title>
+    <title>RÉGIE PRO | SPECTACLE CONTROL</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #222; color: white; max-width: 800px; margin: auto; }
-        .card { background: #333; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        button, select, input:not([type="color"]):not([type="file"]) { width: 100%; padding: 12px; margin-top: 5px; font-size: 16px; border-radius: 5px; border: none; }
-        button { background: #007bff; color: white; cursor: pointer; font-weight: bold; }
-        input[type="color"] { height: 50px; padding: 0; }
-        #count { float: right; color: #0f0; font-weight: bold; }
+        /* ==================================== */
+        /* BASE & LAYOUT (Aspect Console PRO) */
+        /* ==================================== */
+        :root {
+            --color-primary: #00bcd4; /* Cyan clair (Accent principal) */
+            --color-secondary: #FFC107; /* Jaune (Accent secondaire/Alerte) */
+            --color-background: #0D0D0D; 
+            --color-card: #181818;
+            --color-input: #222222;
+            --color-text: #EAEAEA;
+            --color-faint: #B0B0B0;
+            --color-border: #333333;
+        }
+
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            padding: 20px; 
+            background: var(--color-background);
+            color: var(--color-text); 
+            max-width: 1400px; 
+            margin: auto; 
+            line-height: 1.4;
+        }
+        h3 { 
+            color: var(--color-primary); 
+            border-bottom: 1px solid var(--color-border); 
+            padding-bottom: 10px; 
+            margin-bottom: 25px; 
+            font-weight: 300; 
+            letter-spacing: 1px;
+            font-size: 1.8rem;
+        }
+        .card { 
+            background: var(--color-card); 
+            padding: 20px; 
+            border-radius: 6px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            border-left: 4px solid var(--accent-color, var(--color-border)); 
+            transition: border-left-color 0.2s;
+        }
+        .card h4 { 
+            color: var(--accent-color, var(--color-text)); 
+            margin-top: 0; 
+            font-weight: 500; 
+            font-size: 1.2rem; 
+            margin-bottom: 15px;
+        }
+        #count { float: right; color: #4CAF50; font-weight: 600; font-size: 1.1rem; }
         
-        /* Styles pour la Timeline */
-        #audio-player { width: 100%; margin: 10px 0; }
-        #events-list { max-height: 250px; overflow-y: auto; background: #1c1c1c; padding: 10px; border-radius: 5px; }
-        .timeline-event { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #444; font-size: 0.9em; }
-        .event-action { color: #f00; cursor: pointer; }
+        /* INPUTS & BOUTONS */
+        button, select, input:not([type="color"]):not([type="file"]) { 
+            width: 100%; 
+            padding: 10px 12px; 
+            margin-top: 6px; 
+            font-size: 15px; 
+            border-radius: 4px; 
+            border: 1px solid var(--color-border); 
+            background: var(--color-input);
+            color: var(--color-text);
+            font-weight: 300;
+            box-sizing: border-box;
+        }
+        input[type="color"] { height: 40px; padding: 0; border-radius: 4px; cursor: pointer; border: none; }
+        label { display: block; margin-top: 15px; font-size: 0.9rem; color: var(--color-faint); font-weight: 500;}
+        .btn-action { 
+            background: var(--btn-color, #333); 
+            color: white; 
+            cursor: pointer; 
+            font-weight: 500; 
+            border: none; 
+            padding: 12px;
+            transition: background 0.2s; 
+        }
+        .btn-action:hover { filter: brightness(1.1); }
+        .btn-action:active { transform: scale(0.99); }
+        
+        /* NAVIGATION PAR ONGLET */
+        #tabs { display: flex; border-bottom: 2px solid var(--color-border); margin-bottom: 20px; }
+        .tab-button {
+            padding: 12px 25px;
+            cursor: pointer;
+            background: var(--color-card);
+            color: var(--color-faint);
+            border: none;
+            border-radius: 6px 6px 0 0;
+            margin-right: 2px;
+            font-weight: 500;
+            transition: background 0.3s, color 0.3s;
+        }
+        .tab-button.active {
+            background: var(--color-primary);
+            color: var(--color-card);
+            box-shadow: 0 -2px 10px rgba(0, 188, 212, 0.5);
+            font-weight: 700;
+        }
+        .tab-content { padding: 5px 0; display: none; }
+        .tab-content.active { display: block; }
+
+        /* WAVESURFER & TIMELINE */
+        #waveform { background: #000; border-radius: 4px; margin: 15px 0; cursor: crosshair; }
+        #events-list { max-height: 300px; overflow-y: auto; background: #121212; padding: 10px; border-radius: 4px; border: 1px solid #282828;}
+        .timeline-event { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #282828; font-size: 0.9em; align-items: center; }
+        .timeline-event:last-child { border-bottom: none; }
+        .time-display { font-weight: bold; width: 70px; color: var(--color-primary); cursor: pointer; }
+        .event-details { flex-grow: 1; margin: 0 10px; color: var(--color-faint); }
+        .event-action { color: #FF5252; cursor: pointer; font-size: 1.1em; }
+        
+        /* PROG GRID */
+        #Prog { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 20px; }
+        #gobo-canvas { 
+            background: #121212; 
+            border: 1px solid var(--color-primary); 
+            display: block; 
+            margin: 10px auto; 
+            cursor: crosshair;
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.2);
+        }
+        .draw-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+        
+        /* LIVE GRID */
+        #LiveSimple { padding: 20px; }
+        #live-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .live-cue-button {
+            height: 80px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--color-text);
+            background: #282828;
+            border: 1px solid #505050;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .live-cue-button:active {
+            transform: scale(0.98);
+            box-shadow: 0 0 15px var(--btn-color);
+        }
+        .cue-status { font-size: 0.75rem; opacity: 0.7; }
+        
+        /* LIVE SIMPLE HORLOGE */
+        #big-time-display {
+            font-family: 'Roboto', monospace;
+            font-size: 5rem;
+            text-align: center;
+            margin: 30px 0 50px 0;
+            color: var(--color-secondary);
+            text-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
+            padding: 10px;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            background: var(--color-card);
+        }
     </style>
 </head>
 <body>
-    <h3>🎛️ Régie Spectacle <span id="count">1 connecté</span></h3>
+    <h3>💡 RÉGIE SPECTACLE PRO <span id="count">1 connecté</span></h3>
 
-    <div class="card">
-        <h4>🎵 Séquence Audio & Time Code</h4>
-        <input type="file" id="audioFile" accept="audio/*" onchange="loadAudio()">
-        <audio id="audio-player" controls></audio>
+    <div id="tabs">
+        <button class="tab-button active" onclick="openTab(event, 'Timecode')"><i class="fas fa-clock"></i> TIMECODE (Timeline)</button>
+        <button class="tab-button" onclick="openTab(event, 'LiveSimple')"><i class="fas fa-hand-pointer"></i> LIVE (Cues Rapides)</button>
+        <button class="tab-button" onclick="openTab(event, 'Prog')"><i class="fas fa-tools"></i> PROGRAMMATION</button>
+    </div>
+
+    <div id="Timecode" class="tab-content active">
+        <div class="card" style="--accent-color: var(--color-primary);">
+            <h4>🎵 Timeline & Audio</h4>
+            <div id="waveform" title="Cliquez pour repositionner la tête de lecture."></div>
+            
+            <input type="file" id="audioFile" accept="audio/*" onchange="loadAudio()" title="Chargez votre fichier MP3/WAV">
+            
+            <div id="timeline-controls" style="display: flex; gap: 15px; margin-top: 20px;">
+                <button onclick="togglePlayback()" id="playPauseButton" class="btn-action" style="--btn-color: #4CAF50; flex: 1;">
+                    <i class="fas fa-play"></i> PLAY / PAUSE
+                </button>
+                <button onclick="snapToTimecode()" class="btn-action" style="--btn-color: #5f5f5f; flex: 1;">
+                    <i class="fas fa-crosshairs"></i> SNAP TEMPS
+                </button>
+                <button onclick="startSync()" class="btn-action" style="--btn-color: #FF5252; flex: 1.5;">
+                    <i class="fas fa-bullhorn"></i> DÉMARRER SYNCHRO
+                </button>
+            </div>
+            <p style="text-align: center; font-size: 1.1rem; margin-top: 15px;">Temps actuel: <strong id="current-time">00:00.000</strong></p>
+        </div>
         
-        <div id="timeline-controls">
-            <button onclick="startSync()" style="background:#dc3545;">🔴 START SYNC</button>
-            <p>Temps actuel: <span id="current-time">00:00.000</span></p>
+        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px;">
+            <div class="card" style="--accent-color: var(--color-secondary);">
+                <h4>✨ Ajouter un Événement</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label for="event-time-ms">Temps (ms) :</label>
+                        <input type="number" id="event-time-ms" placeholder="Ex: 3500">
+                    </div>
+                    <div>
+                        <label for="fade-time-ms">Fade (ms) :</label>
+                        <input type="number" id="fade-time-ms" value="0" placeholder="Ex: 500">
+                    </div>
+                </div>
+                
+                <label for="preset-action">Action :</label>
+                <select id="preset-action"></select>
+
+                <label for="gobo-filter-color">Couleur/Filtre :</label>
+                <input type="color" id="gobo-filter-color" value="#FFFFFF">
+                
+                <label for="event-target">Ciblage :</label>
+                <select id="event-target"></select>
+                
+                <button onclick="addEvent()" class="btn-action" style="--btn-color: var(--color-secondary); margin-top: 20px;">
+                    <i class="fas fa-plus"></i> Ajouter à la Timeline
+                </button>
+            </div>
+            
+            <div class="card" style="--accent-color: var(--color-border);">
+                <h4><i class="fas fa-list-ol"></i> Timeline (<span id="total-events">0</span> Évèn.)</h4>
+                <div id="events-list"></div>
+            </div>
+        </div>
+
+        <div class="card" style="--accent-color: #17a2b8;">
+            <h4>🔄 Séquence Délay / Chase</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><label for="chase-group-1">Départ :</label><select id="chase-group-1"></select></div>
+                <div><div><label for="chase-group-2">Arrivée :</label><select id="chase-group-2"></select></div></div>
+            </div>
+            <select id="chase-action" style="margin-top: 15px;"></select>
+            <input type="number" id="chase-delay-ms" value="100" placeholder="Délay entre les groupes (ms)">
+            <button onclick="addChaseEvent()" class="btn-action" style="--btn-color: #17a2b8; margin-top: 15px;">
+                <i class="fas fa-share-alt"></i> Ajouter Séquence Délay
+            </button>
+        </div>
+    </div>
+    
+    <div id="LiveSimple" class="tab-content">
+        <div class="card" style="--accent-color: var(--color-secondary);">
+            <h4>⏲️ Chronomètre de Référence</h4>
+            <div id="big-time-display">00:00:00</div>
+            <div style="display: flex; gap: 15px;">
+                <button onclick="startStopWatch()" class="btn-action" style="--btn-color: #4CAF50; flex: 1;">
+                    <i class="fas fa-play"></i> DÉMARRER CHRONO
+                </button>
+                <button onclick="resetStopWatch()" class="btn-action" style="--btn-color: #FF5252; flex: 1;">
+                    <i class="fas fa-stop"></i> RESET
+                </button>
+            </div>
+        </div>
+        
+        <div class="card" style="--accent-color: #4CAF50;">
+            <h4>🎹 Déclenchement Cues Rapides</h4>
+            <div id="live-grid">
+                </div>
         </div>
     </div>
 
-    <div class="card">
-        <h4>➕ Ajouter un Événement</h4>
-        <input type="number" id="event-time-ms" placeholder="Temps (ms) Ex: 3500">
-        
-        <label for="preset-action" style="margin-top:10px; display: block;">Action Prédéfinie (Gobo, Couleur unie, Effet)</label>
-        <select id="preset-action">
-            </select>
 
-        <label for="gobo-filter-color" style="margin-top:10px; display: block;">Couleur du Filtre</label>
-        <input type="color" id="gobo-filter-color" value="#FFFFFF">
-        
-        <select id="event-target">
-            <option value="all">Tout le monde</option>
-            <option value="Groupe A">Groupe A</option>
-            <option value="Groupe B">Groupe B</option>
-        </select>
-        <button onclick="addEvent()">Ajouter à la Timeline</button>
-    </div>
-    
-    <div class="card">
-        <h4>🔁 Délay / Chase (Effet de Propagation A -> B)</h4>
-        <select id="chase-action">
-            </select>
-        <input type="number" id="chase-delay-ms" value="100" placeholder="Délay entre les groupes (ms)">
-        <button onclick="addChaseEvent()">Ajouter Séquence Délay</button>
-    </div>
+    <div id="Prog" class="tab-content">
+            
+            <div class="card" style="--accent-color: #ff7f50;">
+                <h4>🔨 Programmation & Enregistrement</h4>
+                
+                <label for="prog-action">Action :</label>
+                <select id="prog-action"></select>
+                
+                <label for="prog-color">Couleur/Filtre :</label>
+                <input type="color" id="prog-color" value="#FFFFFF">
+                
+                <label for="prog-fade-ms">Fade (ms) :</label>
+                <input type="number" id="prog-fade-ms" value="500">
+                
+                <label for="prog-target">Ciblage :</label>
+                <select id="prog-target"></select>
+                
+                <button onclick="previewScene()" class="btn-action" style="--btn-color: #5f5f5f; margin-top: 20px;">
+                    <i class="fas fa-eye"></i> Aperçu (Live)
+                </button>
+                
+                <hr style="border-top: 1px dashed var(--color-border); margin: 20px 0;">
+                
+                <label for="cue-name">Nom du CUE (Scène) :</label>
+                <input type="text" id="cue-name" placeholder="Ex: Refrain Bleu Strobe">
+                
+                <button onclick="saveSceneAsCue()" class="btn-action" style="--btn-color: #ff7f50; margin-top: 8px;">
+                    <i class="fas fa-save"></i> Enregistrer Scène en CUE
+                </button>
+            </div>
+            
+            <div class="card" style="--accent-color: var(--color-primary);">
+                <h4>🖼️ Gobo Designer (Dessin & Upload)</h4>
+                
+                <canvas id="gobo-canvas" width="250" height="250"></canvas>
+                
+                <div class="draw-controls">
+                    <input type="color" id="draw-color" value="#FFFFFF" style="height: 35px;">
+                    <select id="draw-mode">
+                        <option value="line">Ligne</option>
+                        <option value="rect">Carré</option>
+                        <option value="circle">Cercle</option>
+                    </select>
+                    <button onclick="clearCanvas()" class="btn-action" style="--btn-color: #FF5252; padding: 5px;"><i class="fas fa-eraser"></i> Clear</button>
+                </div>
+                
+                <label for="gobo-name" style="margin-top: 15px;">Nom du nouveau Gobo :</label>
+                <input type="text" id="gobo-name" placeholder="Ex: Mon Logo Étoile">
+                
+                <button onclick="createGoboFromCanvas()" class="btn-action" style="--btn-color: var(--color-primary); margin-top: 8px;">
+                    <i class="fas fa-paint-brush"></i> Créer Gobo à partir du Dessin
+                </button>
+                
+                <hr style="border-top: 1px dashed var(--color-border); margin: 20px 0;">
 
-    <div class="card">
-        <h4>🕰️ Timeline du Projet (<span id="total-events">0</span> Événements)</h4>
-        <div id="events-list">
+                <label for="gobo-upload">Uploader Gobo (Image) :</label>
+                <input type="file" id="gobo-upload" accept="image/*">
+                <button onclick="uploadGobo()" class="btn-action" style="--btn-color: #444; margin-top: 8px;">
+                    <i class="fas fa-upload"></i> Uploader et Ajouter
+                </button>
+                <p id="upload-status" style="font-size: 0.85em; margin-top: 5px; color: var(--color-secondary);"></p>
+            </div>
+            
+            <div class="card" style="--accent-color: #999;">
+                <h4>👥 Gestion des Groupes</h4>
+                <input type="text" id="new-group-name" placeholder="Nom du nouveau groupe (Ex: Groupe C)">
+                <button onclick="addGroup()" class="btn-action" style="--btn-color: #999;">
+                    <i class="fas fa-plus-circle"></i> Ajouter Groupe
+                </button>
+                <div id="group-buttons" style="margin-top: 20px;"></div>
+                <hr style="border-top: 1px dashed var(--color-border); margin: 20px 0;">
+                <h5>Actions Rapides:</h5>
+                <p style="font-size: 0.85em; color: var(--color-faint);">Cliquer sur un groupe pour lui envoyer la scène en cours de programmation.</p>
             </div>
     </div>
-    
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
         let timeline = [];
-        const audioPlayer = document.getElementById('audio-player');
         let syncInterval;
+        let wavesurfer = null; 
+        let availableGroups = ['all', 'Groupe A', 'Groupe B']; 
+        let scenes = {}; 
+        let lastSnappedTime = 0; 
+        
+        // Chronomètre Live Variables
+        let stopwatchInterval;
+        let startTime = 0;
+        let elapsedTime = 0;
 
-        // --- BIBLIOTHÈQUE DE GOBOS ET EFFETS PRÉDÉFINIS ---
+        // Gobo Drawing Variables
+        const canvas = document.getElementById('gobo-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let startX, startY;
+        
         const PRESET_LIBRARY = [
-            // Couleurs Unies
             { name: "Couleur Unie", type: "color", value: "use_color_input" }, 
-            
-            // Effets Spéciaux (Type 'effect')
             { name: "Effet: Arrêt des Effets/Retour au Noir", type: "effect", value: "OFF" },
             { name: "Effet: Strobe Rapide", type: "effect", value: "STROBE_FAST" },
             { name: "Effet: Strobe Moyen", type: "effect", value: "STROBE_MEDIUM" },
-            { name: "Effet: Pulse Lent (Blanc)", type: "effect", value: "PULSE_SLOW" },
-            
-            // Gobos (Images - REMPLACEZ CES URLS PUBLIQUES !)
-            { name: "Gobo: Logo du Groupe (URL à remplacer)", type: "image", value: "https://votre-url-gobo-1.com/logo.png" },
-            { name: "Gobo: Ciel Étoilé (URL à remplacer)", type: "image", value: "https://votre-url-gobo-2.com/stars.png" },
-            { name: "Gobo: Texture (URL à remplacer)", type: "image", value: "https://votre-url-gobo-3.com/texture.png" }
+            { name: "Effet: Pulse Lent", type: "effect", value: "PULSE_SLOW" },
+            { name: "Gobo: Logo (Exemple)", type: "image", value: "https://via.placeholder.com/200?text=LOGO" },
         ];
-        
-        // Actions disponibles pour les séquences Chase (Délay)
-        const CHASE_ACTIONS = PRESET_LIBRARY.filter(p => p.type !== 'image'); 
-        // ----------------------------------------------------
 
-        // Mise à jour du compteur de connectés (sans l'admin)
-        socket.on('update-count', (data) => {
-            document.getElementById('count').innerText = (data.count - 1) + " connectés";
+        // =================================================================
+        // PARTIE 1: NAVIGUATION & INITIALISATION
+        // =================================================================
+        
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            const displayStyle = (tabName === 'Prog') ? 'grid' : 'block'; 
+            document.getElementById(tabName).style.display = displayStyle;
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+            
+            if (tabName === 'Timecode' && wavesurfer) wavesurfer.drawBuffer();
+            if (tabName === 'LiveSimple') renderLiveButtons(); 
+        }
+        
+        document.addEventListener("DOMContentLoaded", () => {
+             document.getElementById('Timecode').style.display = "block"; // Démarrage sur Timecode
+             initCanvas();
+             initializePresets();
+             updateGroupSelectors();
         });
 
-        // =================================================================
-        // LOGIQUE D'INTERFACE ET DE TIMELINE
-        // =================================================================
-
         function initializePresets() {
-            const select = document.getElementById('preset-action');
-            select.innerHTML = '';
-            PRESET_LIBRARY.forEach((item, index) => {
-                const option = document.createElement('option');
-                option.value = index; 
-                option.innerText = item.name;
-                select.appendChild(option);
+            const selectors = [document.getElementById('preset-action'), document.getElementById('prog-action')];
+            const chaseSelect = document.getElementById('chase-action');
+            
+            selectors.forEach(select => {
+                select.innerHTML = '';
+                PRESET_LIBRARY.forEach((item, index) => {
+                    select.add(new Option(item.name, index));
+                });
+            });
+            
+            chaseSelect.innerHTML = '';
+            PRESET_LIBRARY.filter(p => p.type !== 'image').forEach((item, index) => {
+                 chaseSelect.add(new Option(item.name, index));
             });
         }
         
-        function initializeChasePresets() {
-            const select = document.getElementById('chase-action');
-            select.innerHTML = '';
-            CHASE_ACTIONS.forEach((item, index) => {
-                const option = document.createElement('option');
-                option.value = index; 
-                option.innerText = item.name;
-                select.appendChild(option);
+        socket.on('update-count', (data) => { document.getElementById('count').innerText = (data.count - 1) + " connectés"; });
+        socket.on('connect', () => { updateGroupSelectors(); initializePresets(); });
+
+
+        // =================================================================
+        // PARTIE 2: WAVESURFER & TIMECODE (Timeline)
+        // =================================================================
+        
+        function initWavesurfer() {
+            wavesurfer = WaveSurfer.create({
+                container: '#waveform',
+                waveColor: '#444444', 
+                progressColor: '#00bcd4', 
+                cursorColor: '#FF5252', 
+                barWidth: 2,
+                height: 100,
+                responsive: true,
+                backend: 'MediaElement',
+                dragToSeek: true 
             });
+            
+            wavesurfer.on('audioprocess', function () {
+                const currentTime = Math.round(wavesurfer.getCurrentTime() * 1000);
+                document.getElementById('current-time').innerText = (currentTime / 1000).toFixed(3);
+                lastSnappedTime = currentTime; 
+            });
+             
+            wavesurfer.on('seek', (progress) => {
+                const seekTimeMs = Math.round(progress * wavesurfer.getDuration() * 1000);
+                snapToTimecode(seekTimeMs);
+            });
+
+            wavesurfer.on('play', () => { 
+                document.getElementById('playPauseButton').innerHTML = '<i class="fas fa-pause"></i> PAUSE'; 
+                document.getElementById('playPauseButton').style.setProperty('--btn-color', '#FF5252');
+            });
+            wavesurfer.on('pause', () => { 
+                document.getElementById('playPauseButton').innerHTML = '<i class="fas fa-play"></i> PLAY'; 
+                document.getElementById('playPauseButton').style.setProperty('--btn-color', '#4CAF50');
+            });
+            
+            wavesurfer.on('ready', () => { renderTimeline(); });
         }
 
-        // Ajoute l'événement à la timeline (dans le tableau local)
-        function pushEvent(timeMs, target, type, value, color = null) {
-            timeline.push({ time_ms: timeMs, target, type, value, color: color });
+        function loadAudio() {
+            const file = document.getElementById('audioFile').files[0];
+            if (file) { 
+                if(!wavesurfer) initWavesurfer(); 
+                wavesurfer.load(URL.createObjectURL(file)); 
+            }
+        }
+        
+        function togglePlayback() {
+            if (wavesurfer && wavesurfer.isReady) { wavesurfer.playPause(); } else { alert("Veuillez charger une piste audio d'abord."); }
+        }
+        
+        function snapToTimecode(timeMs = lastSnappedTime) {
+            document.getElementById('event-time-ms').value = timeMs;
+        }
+
+        function startSync() {
+            if (!wavesurfer || !wavesurfer.isReady) { alert("Veuillez charger l'audio."); return; }
+            if (timeline.length === 0) { alert("Ajoutez des événements à la timeline."); return; }
+
+            socket.emit('timeline-load', { timeline: timeline });
+            
+            if (syncInterval) clearInterval(syncInterval);
+            
+            syncInterval = setInterval(() => {
+                const currentTime = Math.round(wavesurfer.getCurrentTime() * 1000); 
+                socket.emit('timecode-sync', { time_ms: currentTime });
+
+                if (wavesurfer.getDuration() * 1000 <= currentTime && !wavesurfer.isPlaying()) {
+                    clearInterval(syncInterval);
+                }
+            }, 50); 
+            
+            alert("Synchronisation Timecode lancée !");
+        }
+        
+        function pushEvent(timeMs, target, type, value, color = null, fade_ms = 0) {
+            timeline.push({ time_ms: timeMs, target, type, value, color: color, fade_ms: fade_ms });
             timeline.sort((a, b) => a.time_ms - b.time_ms);
             renderTimeline();
         }
@@ -136,6 +511,7 @@
             const target = document.getElementById('event-target').value;
             const presetIndex = parseInt(document.getElementById('preset-action').value);
             const filterColor = document.getElementById('gobo-filter-color').value;
+            const fadeMs = parseInt(document.getElementById('fade-time-ms').value) || 0; 
 
             if (isNaN(timeMs)) return alert("Entrez un temps en millisecondes valide.");
             
@@ -143,128 +519,400 @@
             let finalValue = preset.value;
             let finalColor = null;
 
-            if (preset.type === 'color') {
-                // Pour les couleurs unies, la valeur est le code couleur du filtre
-                finalValue = filterColor; 
-            }
+            if (preset.type === 'color' || preset.type === 'effect') { finalValue = filterColor; }
+            if (preset.type === 'image') { finalColor = filterColor; }
             
-            if (preset.type === 'image') {
-                // Pour les Gobos, la couleur est passée dans la propriété 'color'
-                finalColor = filterColor; 
-            }
-            
-            pushEvent(timeMs, target, preset.type, finalValue, finalColor);
+            pushEvent(timeMs, target, preset.type, finalValue, finalColor, fadeMs);
         }
-        
+
         function addChaseEvent() {
             const timeMs = parseInt(document.getElementById('event-time-ms').value);
             const delayMs = parseInt(document.getElementById('chase-delay-ms').value);
             const presetIndex = parseInt(document.getElementById('chase-action').value);
             const filterColor = document.getElementById('gobo-filter-color').value;
+            const fadeMs = parseInt(document.getElementById('fade-time-ms').value) || 0; 
+            const target1 = document.getElementById('chase-group-1').value; 
+            const target2 = document.getElementById('chase-group-2').value; 
 
             if (isNaN(timeMs) || isNaN(delayMs)) return alert("Entrez des valeurs de temps valides.");
+            if (target1 === target2) return alert("Les groupes de départ et d'arrivée doivent être différents pour un effet Chase.");
             
-            const preset = CHASE_ACTIONS[presetIndex];
-            
+            const preset = PRESET_LIBRARY[presetIndex];
             let finalValue = preset.value;
             let finalColor = null;
 
-            if (preset.type === 'color') {
-                finalValue = filterColor; 
-                finalColor = null;
-            }
+            if (preset.type === 'color' || preset.type === 'effect') { finalValue = filterColor; }
+            if (preset.type === 'image') { finalColor = filterColor; }
+            
+            pushEvent(timeMs, target1, preset.type, finalValue, finalColor, fadeMs);
+            pushEvent(timeMs + delayMs, target2, preset.type, finalValue, finalColor, fadeMs);
 
-            // 1. Événement pour le Groupe A
-            pushEvent(timeMs, "Groupe A", preset.type, finalValue, finalColor);
-
-            // 2. Événement pour le Groupe B avec le décalage
-            const delayedTime = timeMs + delayMs;
-            pushEvent(delayedTime, "Groupe B", preset.type, finalValue, finalColor);
-
-            alert(`Séquence Délay (${delayMs}ms) ajoutée : Groupe A à ${timeMs}ms, Groupe B à ${delayedTime}ms.`);
-        }
-        
-        // Affiche la timeline sur l'interface
-        function renderTimeline() {
-            const list = document.getElementById('events-list');
-            list.innerHTML = '';
-            document.getElementById('total-events').innerText = timeline.length;
-
-            timeline.forEach((event, index) => {
-                const div = document.createElement('div');
-                div.className = 'timeline-event';
-                const timeStr = (event.time_ms / 1000).toFixed(3);
-                
-                let detail = `Type: ${event.type.toUpperCase()}, Valeur: `;
-                
-                if (event.type === 'color') {
-                    detail += `<span style="background:${event.value}; color:${event.value==='#FFFFFF' ? '#000' : '#FFF'}; padding:2px 5px;">${event.value}</span>`;
-                } else if (event.type === 'effect') {
-                    detail += `**${event.value}**`;
-                } else if (event.type === 'image') {
-                    const colorDisplay = `<span style="background:${event.color}; color:${event.color==='#FFFFFF' ? '#000' : '#FFF'}; padding:2px 5px;">${event.color}</span>`;
-                    detail += `[IMAGE] Filtrée par ${colorDisplay}`;
-                }
-                
-                div.innerHTML = `
-                    <span>${timeStr}s (${event.target}) : ${detail}</span>
-                    <span class="event-action" onclick="removeEvent(${index})">❌</span>
-                `;
-                list.appendChild(div);
-            });
+            alert(`Séquence Délay (${delayMs}ms) ajoutée.`);
         }
         
         function removeEvent(index) {
             timeline.splice(index, 1);
             renderTimeline();
         }
-        
-        // Charge le fichier audio dans le lecteur
-        function loadAudio() {
-            const file = document.getElementById('audioFile').files[0];
-            if (file) {
-                audioPlayer.src = URL.createObjectURL(file);
-            }
-        }
 
-        // =================================================================
-        // LOGIQUE DE SYNCHRONISATION (TIME CODE)
-        // =================================================================
-
-        function startSync() {
-            if (audioPlayer.paused) {
-                alert("Veuillez charger et lancer la lecture de l'audio d'abord.");
-                return;
-            }
-            if (timeline.length === 0) {
-                 alert("Ajoutez des événements à la timeline avant de commencer.");
-                return;
-            }
-
-            // 1. Envoyer la timeline aux clients
-            socket.emit('timeline-load', { timeline: timeline });
+        function renderTimeline() {
+            const list = document.getElementById('events-list');
+            list.innerHTML = '';
+            document.getElementById('total-events').innerText = timeline.length;
             
-            // 2. Lancer l'intervalle de synchronisation (toutes les 50ms)
-            if (syncInterval) clearInterval(syncInterval);
-            
-            syncInterval = setInterval(() => {
-                const currentTime = Math.round(audioPlayer.currentTime * 1000); // Temps en millisecondes
-                document.getElementById('current-time').innerText = (currentTime / 1000).toFixed(3);
+            if (wavesurfer) wavesurfer.clearMarkers();
+
+            timeline.forEach((event, index) => {
+                const timeStr = (event.time_ms / 1000).toFixed(3);
+                let markerColor = '#AAAAAA'; 
+                let details = '';
                 
-                // Envoyer le Time Code aux clients
-                socket.emit('timecode-sync', { time_ms: currentTime });
-
-                if (audioPlayer.ended) {
-                    clearInterval(syncInterval);
-                    console.log("Lecture terminée, synchronisation arrêtée.");
+                if (event.type === 'color' || event.type === 'effect') {
+                    const colorDisplay = `<span style="color:${event.value}; font-weight: bold;">${event.type.toUpperCase()}</span>`;
+                    details = `${colorDisplay}`;
+                    markerColor = event.value;
+                } else if (event.type === 'image') {
+                    const goboName = PRESET_LIBRARY.find(p => p.value === event.value)?.name || 'Gobo Custom';
+                    details = `GOBO: ${goboName.split(':').pop().trim()}`;
+                    markerColor = event.color;
                 }
-            }, 50); // Mettre à jour toutes les 50 millisecondes
+                
+                const div = document.createElement('div');
+                div.className = 'timeline-event';
+                div.innerHTML = `
+                    <span class="time-display" onclick="wavesurfer.seekTo(${event.time_ms / 1000 / wavesurfer.getDuration()})">${timeStr}s</span>
+                    <span class="event-details">
+                        <i class="fas fa-users" style="color:#B0B0B0;"></i> ${event.target} | 
+                        ${details}
+                    </span>
+                    <span class="event-action" onclick="removeEvent(${index})"><i class="fas fa-trash-alt"></i></span>
+                `;
+                list.appendChild(div);
+
+                if (wavesurfer && wavesurfer.isReady) {
+                    wavesurfer.addMarker({
+                        time: event.time_ms / 1000,
+                        label: `${event.target.substring(0, 1)}`,
+                        color: markerColor,
+                        position: 'top', 
+                        tooltip: `${timeStr}s - ${event.target}`
+                    });
+                }
+            });
         }
         
-        // Initialiser l'interface au chargement
-        initializePresets();
-        initializeChasePresets();
-        renderTimeline();
+        // =================================================================
+        // PARTIE 3: LIVE SIMPLE (Chronomètre)
+        // =================================================================
+        
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = Math.floor((ms % 1000) / 10); // Précision au centième
+            
+            const pad = (num, digits = 2) => num.toString().padStart(digits, '0');
+            
+            return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(milliseconds)}`;
+        }
+
+        function updateStopWatch() {
+            elapsedTime = Date.now() - startTime;
+            document.getElementById('big-time-display').innerText = formatTime(elapsedTime);
+        }
+
+        function startStopWatch() {
+            if (stopwatchInterval) return; // Déjà en cours
+            
+            if (startTime === 0) { // Premier démarrage
+                startTime = Date.now();
+            } else { // Reprise après pause
+                 startTime = Date.now() - elapsedTime;
+            }
+            
+            stopwatchInterval = setInterval(updateStopWatch, 10);
+            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').innerHTML = '<i class="fas fa-pause"></i> PAUSE CHRONO';
+            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').onclick = pauseStopWatch;
+
+        }
+
+        function pauseStopWatch() {
+            clearInterval(stopwatchInterval);
+            stopwatchInterval = null;
+            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> REPRENDRE CHRONO';
+            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').onclick = startStopWatch;
+        }
+
+        function resetStopWatch() {
+            clearInterval(stopwatchInterval);
+            stopwatchInterval = null;
+            startTime = 0;
+            elapsedTime = 0;
+            document.getElementById('big-time-display').innerText = formatTime(0);
+            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> DÉMARRER CHRONO';
+            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').onclick = startStopWatch;
+        }
+        
+        // =================================================================
+        // PARTIE 4: PROG & GROUPES
+        // =================================================================
+        
+        function updateGroupSelectors() {
+            const selectors = [document.getElementById('event-target'), document.getElementById('chase-group-1'), document.getElementById('chase-group-2'), document.getElementById('prog-target')];
+            selectors.forEach(s => s.innerHTML = '');
+            
+            availableGroups.filter(g => g !== 'all').forEach(group => {
+                selectors[1].add(new Option(group, group));
+                selectors[2].add(new Option(group, group));
+            });
+
+            availableGroups.forEach(group => {
+                selectors[0].add(new Option(group, group));
+                selectors[3].add(new Option(group, group));
+            });
+            renderGroupButtons();
+        }
+
+        function addGroup() {
+            const name = document.getElementById('new-group-name').value.trim();
+            if (name && !availableGroups.includes(name)) {
+                availableGroups.push(name);
+                document.getElementById('new-group-name').value = '';
+                updateGroupSelectors();
+            } else if (name) {
+                alert("Ce groupe existe déjà.");
+            }
+        }
+        
+        function renderGroupButtons() {
+            const container = document.getElementById('group-buttons');
+            container.innerHTML = '';
+            availableGroups.filter(g => g !== 'all').forEach(group => {
+                const btn = document.createElement('button');
+                btn.className = 'client-item btn-action'; 
+                btn.innerText = group;
+                btn.style.setProperty('--btn-color', '#00bcd4');
+                btn.onclick = () => quickSendToGroup(group);
+                container.appendChild(btn);
+            });
+        }
+
+        function getProgData() {
+            const presetIndex = parseInt(document.getElementById('prog-action').value);
+            const target = document.getElementById('prog-target').value;
+            const color = document.getElementById('prog-color').value;
+            const fadeMs = parseInt(document.getElementById('prog-fade-ms').value) || 0; 
+            
+            const preset = PRESET_LIBRARY[presetIndex]; 
+            let finalValue = preset.value;
+            let finalColor = null;
+
+            if (preset.type === 'color' || preset.type === 'effect') { finalValue = color; }
+            if (preset.type === 'image') { finalColor = color; }
+
+            return { target, type: preset.type, value: finalValue, color: finalColor, fade_ms: fadeMs };
+        }
+
+        function previewScene() {
+            const data = getProgData();
+            socket.emit("admin-order", data); 
+        }
+
+        function saveSceneAsCue() {
+            const cueName = document.getElementById('cue-name').value.trim();
+            if (!cueName) return alert("Veuillez donner un nom au CUE.");
+            
+            const data = getProgData();
+            scenes[cueName] = data; 
+            document.getElementById('cue-name').value = '';
+            
+            alert(`Scène "${cueName}" enregistrée en CUE !`);
+            
+            // Mise à jour de l'affichage Live
+            if (document.getElementById('LiveSimple').classList.contains('active')) {
+                renderLiveButtons();
+            }
+        }
+        
+        function quickSendToGroup(group) {
+            const data = getProgData();
+            data.target = group;
+            socket.emit("admin-order", data);
+        }
+        
+        // =================================================================
+        // PARTIE 5: GOBOS DESIGNER (DESSIN & UPLOAD)
+        // =================================================================
+
+        function initCanvas() {
+            ctx.fillStyle = '#121212';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#FFFFFF'; 
+            ctx.lineWidth = 2;
+            ctx.font = '30px Roboto';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#444';
+            ctx.fillText("Draw Here", canvas.width / 2, canvas.height / 2);
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getMousePos(e);
+            startX = pos.x;
+            startY = pos.y;
+            ctx.strokeStyle = document.getElementById('draw-color').value;
+            ctx.lineWidth = 4;
+            if (document.getElementById('draw-mode').value === 'line') {
+                 ctx.beginPath();
+                 ctx.moveTo(startX, startY);
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const pos = getMousePos(e);
+            const mode = document.getElementById('draw-mode').value;
+            
+            if (mode === 'line') {
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (!isDrawing) return;
+            isDrawing = false;
+            const pos = getMousePos(e);
+            const mode = document.getElementById('draw-mode').value;
+            
+            if (mode !== 'line') {
+                const width = pos.x - startX;
+                const height = pos.y - startY;
+                
+                ctx.beginPath();
+                if (mode === 'rect') {
+                    ctx.rect(startX, startY, width, height);
+                    ctx.stroke();
+                } else if (mode === 'circle') {
+                    const radius = Math.sqrt(width * width + height * height) / 2;
+                    ctx.arc(startX + width/2, startY + height/2, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+        });
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            initCanvas(); 
+        }
+
+        function createGoboFromCanvas() {
+            const goboName = document.getElementById('gobo-name').value.trim();
+            if (!goboName) return alert("Veuillez nommer votre nouveau Gobo.");
+
+            const dataUrl = canvas.toDataURL('image/png');
+            
+            const newPreset = {
+                name: `Gobo Dessiné: ${goboName}`,
+                type: "image",
+                value: dataUrl
+            };
+            PRESET_LIBRARY.push(newPreset);
+            
+            initializePresets(); 
+            alert(`✅ Gobo "${goboName}" créé et ajouté aux Presets !`);
+        }
+        
+        async function uploadGobo() {
+            const fileInput = document.getElementById('gobo-upload');
+            const status = document.getElementById('upload-status');
+            const file = fileInput.files[0];
+
+            if (!file) { status.innerText = "Veuillez sélectionner un fichier."; return; }
+            status.innerText = "Téléchargement en cours...";
+            
+            const formData = new FormData();
+            formData.append('goboFile', file);
+
+            try {
+                const response = await fetch('/upload-gobo', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    const newPreset = {
+                        name: `Gobo Upload: ${file.name.substring(0, 20)}`,
+                        type: "image",
+                        value: data.url
+                    };
+                    PRESET_LIBRARY.push(newPreset);
+                    initializePresets(); 
+                    status.innerText = `✅ Gobo ${file.name} ajouté !`;
+                } else {
+                    status.innerText = `❌ Erreur : ${data.message || 'Problème serveur.'}`;
+                }
+            } catch (error) {
+                status.innerText = `❌ Erreur de connexion: ${error.message}`;
+            }
+        }
+
+
+        // =================================================================
+        // PARTIE 6: MODE LIVE (Manuel) - Cues
+        // =================================================================
+
+        function renderLiveButtons() {
+            const grid = document.getElementById('live-grid');
+            grid.innerHTML = '';
+            
+            const cueNames = Object.keys(scenes).sort();
+            
+            if (cueNames.length === 0) {
+                grid.innerHTML = `<p style="color: var(--color-secondary); grid-column: 1 / -1; text-align: center;">
+                    Aucun CUE enregistré. Créez-en dans l'onglet PROGRAMMATION !
+                </p>`;
+                return;
+            }
+
+            cueNames.forEach(name => {
+                const cue = scenes[name];
+                const btn = document.createElement('button');
+                btn.className = 'live-cue-button btn-action';
+                
+                let bgColor = (cue.type === 'color' || cue.type === 'effect') ? cue.value : (cue.color || '#333');
+                if (bgColor.toLowerCase() === 'off' || bgColor.toLowerCase() === '#000000') bgColor = '#181818'; 
+                
+                btn.style.setProperty('--btn-color', bgColor);
+                btn.style.color = (bgColor === '#FFFFFF' || bgColor === 'white') ? '#121212' : 'white';
+
+                btn.innerHTML = `
+                    ${name.toUpperCase()}
+                    <div class="cue-status">
+                        ${cue.target} | ${cue.type.toUpperCase()} | ${cue.fade_ms}ms
+                    </div>
+                `;
+                btn.onclick = () => triggerCue(name);
+                grid.appendChild(btn);
+            });
+        }
+        
+        function triggerCue(cueName) {
+            const data = scenes[cueName];
+            if (!data) return;
+            
+            socket.emit("admin-order", data);
+            
+            console.log(`CUE LIVE déclenché : ${cueName}`);
+        }
+
     </script>
 </body>
 </html>
