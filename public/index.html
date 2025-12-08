@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SPECTACLE | Audience Sync</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;700&display=swap" rel="stylesheet">
+    <title>SHOW SYNC | Pre-Show</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
-        /* Styles de base pour le plein écran immersif */
+        /* BASE & RESET - Ambiance Noire Nuit */
         body, html {
             height: 100%;
             margin: 0;
@@ -16,25 +16,55 @@
             background-color: #000;
             color: #FFF;
             overflow: hidden;
-            transition: background-color 0.5s ease;
+            transition: background-color 0.4s ease; /* Légèrement plus rapide */
             font-family: 'Roboto', sans-serif;
             text-align: center;
+        }
+
+        /* Message d'accueil style "App Screen" */
+        #content {
+            z-index: 10;
+            position: absolute; 
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 400px;
+        }
+        
+        #content h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #00bcd4; /* Cyan CrowdGlow */
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(0, 188, 212, 0.4);
+        }
+        #content p {
+            font-size: 1.1em;
+            color: #B0B0B0;
+            margin-top: 5px;
         }
 
         /* Message de connexion temporaire */
         #connection-message {
             position: fixed;
-            top: 50%;
+            top: 20px;
             left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2em;
-            color: #4CAF50; /* Vert pour la connexion */
+            transform: translateX(-50%);
+            padding: 8px 15px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: #4CAF50; 
             opacity: 0;
             transition: opacity 0.5s ease;
             z-index: 1000;
-            pointer-events: none; /* Ne pas bloquer les clics */
+            pointer-events: none;
+            border: 1px solid #4CAF50;
         }
         
+        /* Zone d'affichage des Gobos/Images */
         #gobo-display {
             width: 100%;
             height: 100%;
@@ -48,36 +78,36 @@
             z-index: 5;
         }
 
-        #content {
-            z-index: 10;
-            padding: 20px;
-        }
-        
+        /* Affichage du Timecode (petit, en bas) */
         #timer-display {
-            font-size: 4em;
-            margin-top: 50px;
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 1.2em;
             color: #FFC107; /* Jaune */
-            text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
-            display: none; /* Masqué par défaut */
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: none; 
+            z-index: 20;
         }
     </style>
 </head>
 <body>
     
     <div id="connection-message"></div>
-    
     <div id="gobo-display"></div>
 
     <div id="content">
-        <h1>SPECTACLE SYNC</h1>
-        <p>En attente des instructions de la régie.</p>
-        
-        <h2 id="timer-display">00:00.000</h2>
+        <h1>SHOW SYNC</h1>
+        <p>Préparez-vous à faire partie du spectacle !</p>
+        <p style="font-size: 0.8em; margin-top: 30px; color: #5f5f5f;">Client: Groupe A</p>
     </div>
+
+    <h2 id="timer-display">00:00.000</h2>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Définissez ici le groupe du client (ou utilisez une variable d'environnement/URL)
         let CLIENT_GROUP = 'Groupe A'; 
 
         const socket = io();
@@ -86,10 +116,12 @@
         let isSyncActive = false;
         let goboTimeout; 
         
+        // Variables pour le Strobe
         let strobeInterval = null;
         let isStrobing = false;
 
         const connectionMessage = document.getElementById('connection-message');
+        const contentDiv = document.getElementById('content');
 
         // ===================================
         // Initialisation & Connexion Simplifiée
@@ -98,9 +130,10 @@
         socket.on('connect', () => {
             connectionMessage.innerText = `CONNECTÉ au ${CLIENT_GROUP}`;
             connectionMessage.style.color = '#4CAF50';
+            connectionMessage.style.borderColor = '#4CAF50';
             connectionMessage.style.opacity = 1;
             
-            // Cacher le message après 10 secondes (10000 ms)
+            contentDiv.style.opacity = 1;
             setTimeout(() => {
                 connectionMessage.style.opacity = 0;
             }, 10000); 
@@ -111,13 +144,14 @@
         socket.on('disconnect', () => {
             connectionMessage.innerText = 'DÉCONNECTÉ';
             connectionMessage.style.color = '#FF5252'; 
+            connectionMessage.style.borderColor = '#FF5252';
             connectionMessage.style.opacity = 1; 
             isSyncActive = false;
             stopStrobe(); 
         });
 
         // ===================================
-        // Logique Strobe Corrigée (Stable)
+        // Logique Strobe Corrigée (Stable et Forcée)
         // ===================================
         
         function stopStrobe() {
@@ -126,31 +160,36 @@
                 strobeInterval = null;
                 isStrobing = false;
             }
+            // Retour au noir par défaut et réactivation de la transition douce
             document.body.style.backgroundColor = '#000000'; 
-            document.body.style.transition = 'background-color 0.5s ease';
+            document.body.style.transition = 'background-color 0.4s ease'; 
         }
         
-        // Fonction pour démarrer le Strobe (Maintenant simple et régulier)
+        // Fonction pour démarrer le Strobe
         function startStrobe(data) {
             stopStrobe(); 
             
-            // Fréquence en ms (basée sur le curseur de la régie)
-            const frequency = data.frequency_ms || 100; 
+            // Fréquence en ms. Le temps total d'un cycle (Allumé + Éteint)
+            const totalCycleMs = data.frequency_ms || 100;
+            // L'intervalle est la moitié de la durée du cycle total. Min 20ms.
+            const intervalMs = Math.max(20, Math.floor(totalCycleMs / 2)); 
+
             const flashColor = data.color || '#FFFFFF'; 
             const body = document.body;
             let isOn = false;
 
+            // TRÈS IMPORTANT: Désactiver toutes transitions pour le clignotement instantané
             body.style.transition = 'none';
 
             strobeInterval = setInterval(() => {
                 if (isOn) {
                     body.style.backgroundColor = '#000000'; // Éteint
                 } else {
-                    body.style.backgroundColor = flashColor; // Allumé avec la couleur définie
+                    body.style.backgroundColor = flashColor; // Allumé
                 }
                 isOn = !isOn;
                 
-            }, frequency);
+            }, intervalMs); 
 
             isStrobing = true;
         }
@@ -164,13 +203,23 @@
             const body = document.body;
             const goboDisplay = document.getElementById('gobo-display');
             
+            // Toujours arrêter le strobe avant d'appliquer un nouvel effet
             stopStrobe(); 
             
             if (goboTimeout) clearTimeout(goboTimeout);
             goboDisplay.style.opacity = 0;
             goboDisplay.style.backgroundImage = 'none';
 
+            // Gérer les transitions de fondu (Fade)
             let duration = data.fade_ms || 0;
+            
+            // Si c'est un STROBE, on le gère immédiatement (pour éviter les transitions CSS)
+            if (data.type === 'effect' && data.value.startsWith('STROBE')) {
+                startStrobe(data); 
+                return; 
+            }
+            
+            // Si ce n'est PAS un STROBE, on définit la transition normale
             if (duration > 0) {
                 body.style.transition = `background-color ${duration}ms linear, filter ${duration}ms linear`;
                 goboDisplay.style.transition = `opacity ${duration}ms linear`;
@@ -193,9 +242,6 @@
                     if (data.value === 'OFF') {
                         body.style.backgroundColor = '#000000';
                         body.style.filter = 'none';
-                    } else if (data.value.startsWith('STROBE')) { 
-                        // Démarrer le Strobe
-                        startStrobe(data); 
                     } else if (data.value === 'PULSE_SLOW') {
                          body.style.backgroundColor = data.color || '#00ff00'; 
                          body.style.filter = 'saturate(50%)';
@@ -217,7 +263,7 @@
         }
         
         // ===================================
-        // Logique de Synchronisation
+        // Logique de Synchronisation (Inchangée)
         // ===================================
 
         socket.on('execute', (data) => {
