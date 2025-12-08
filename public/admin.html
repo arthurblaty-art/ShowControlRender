@@ -58,7 +58,7 @@
         #count { float: right; color: #4CAF50; font-weight: 600; font-size: 1.1rem; }
         
         /* INPUTS & BOUTONS */
-        button, select, input:not([type="color"]):not([type="file"]) { 
+        button, select, input:not([type="color"]):not([type="file"]):not([type="range"]) { 
             width: 100%; 
             padding: 10px 12px; 
             margin-top: 6px; 
@@ -84,6 +84,27 @@
         .btn-action:hover { filter: brightness(1.1); }
         .btn-action:active { transform: scale(0.99); }
         
+        /* NOUVEAU: Style pour le Curseur de Fréquence */
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 8px;
+            background: var(--color-border);
+            border-radius: 5px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+        }
+        #freq-label { display: flex; justify-content: space-between; align-items: center; }
+
+
         /* NAVIGATION PAR ONGLET */
         #tabs { display: flex; border-bottom: 2px solid var(--color-border); margin-bottom: 20px; }
         .tab-button {
@@ -213,6 +234,14 @@
                 <label for="preset-action">Action :</label>
                 <select id="preset-action"></select>
 
+                <label for="strobe-frequency">Fréquence Strobe (ms) :</label>
+                <div id="freq-label">
+                    <span id="freq-value-timecode">100 ms</span>
+                    <span style="color:var(--color-faint); font-size:0.8em;">(50ms = Rapide)</span>
+                </div>
+                <input type="range" id="strobe-frequency-timecode" min="50" max="500" value="100" oninput="updateFreqValue('timecode')">
+
+
                 <label for="gobo-filter-color">Couleur/Filtre :</label>
                 <input type="color" id="gobo-filter-color" value="#FFFFFF">
                 
@@ -274,6 +303,13 @@
                 <label for="prog-action">Action :</label>
                 <select id="prog-action"></select>
                 
+                <label for="strobe-frequency-prog">Fréquence Strobe (ms) :</label>
+                <div id="freq-label">
+                    <span id="freq-value-prog">100 ms</span>
+                    <span style="color:var(--color-faint); font-size:0.8em;">(50ms = Rapide)</span>
+                </div>
+                <input type="range" id="strobe-frequency-prog" min="50" max="500" value="100" oninput="updateFreqValue('prog')">
+
                 <label for="prog-color">Couleur/Filtre :</label>
                 <input type="color" id="prog-color" value="#FFFFFF">
                 
@@ -363,11 +399,13 @@
         let isDrawing = false;
         let startX, startY;
         
+        // Mise à jour de la bibliothèque pour inclure le STROBE_RND sans couleur aléatoire
         const PRESET_LIBRARY = [
             { name: "Couleur Unie", type: "color", value: "use_color_input" }, 
             { name: "Effet: Arrêt des Effets/Retour au Noir", type: "effect", value: "OFF" },
-            { name: "Effet: Strobe Rapide", type: "effect", value: "STROBE_FAST" },
-            { name: "Effet: Strobe Moyen", type: "effect", value: "STROBE_MEDIUM" },
+            { name: "Effet: Strobe Couleur Rapide", type: "effect", value: "STROBE_FAST" },
+            { name: "Effet: Strobe Couleur Moyen", type: "effect", value: "STROBE_MEDIUM" },
+            { name: "Effet: Strobe RND (Rythme Aléatoire)", type: "effect", value: "STROBE_RND" },
             { name: "Effet: Pulse Lent", type: "effect", value: "PULSE_SLOW" },
             { name: "Gobo: Logo (Exemple)", type: "image", value: "https://via.placeholder.com/200?text=LOGO" },
         ];
@@ -376,6 +414,22 @@
         // PARTIE 1: NAVIGUATION & INITIALISATION
         // =================================================================
         
+        // Fonction pour mettre à jour l'affichage de la fréquence
+        function updateFreqValue(prefix) {
+            const value = document.getElementById(`strobe-frequency-${prefix}`).value;
+            document.getElementById(`freq-value-${prefix}`).innerText = `${value} ms`;
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+             // Initialisation des valeurs de fréquence
+             updateFreqValue('timecode');
+             updateFreqValue('prog');
+             // Reste de l'init...
+             document.getElementById('Timecode').style.display = "block"; 
+             initCanvas();
+             initializePresets();
+             updateGroupSelectors();
+        });
+
         function openTab(evt, tabName) {
             var i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tab-content");
@@ -396,12 +450,6 @@
             if (tabName === 'LiveSimple') renderLiveButtons(); 
         }
         
-        document.addEventListener("DOMContentLoaded", () => {
-             document.getElementById('Timecode').style.display = "block"; // Démarrage sur Timecode
-             initCanvas();
-             initializePresets();
-             updateGroupSelectors();
-        });
 
         function initializePresets() {
             const selectors = [document.getElementById('preset-action'), document.getElementById('prog-action')];
@@ -500,8 +548,9 @@
             alert("Synchronisation Timecode lancée !");
         }
         
-        function pushEvent(timeMs, target, type, value, color = null, fade_ms = 0) {
-            timeline.push({ time_ms: timeMs, target, type, value, color: color, fade_ms: fade_ms });
+        // Fonction pour ajouter un événement (inclut frequency_ms)
+        function pushEvent(timeMs, target, type, value, color = null, fade_ms = 0, frequency_ms = 0) {
+            timeline.push({ time_ms: timeMs, target, type, value, color: color, fade_ms: fade_ms, frequency_ms: frequency_ms });
             timeline.sort((a, b) => a.time_ms - b.time_ms);
             renderTimeline();
         }
@@ -512,6 +561,7 @@
             const presetIndex = parseInt(document.getElementById('preset-action').value);
             const filterColor = document.getElementById('gobo-filter-color').value;
             const fadeMs = parseInt(document.getElementById('fade-time-ms').value) || 0; 
+            const frequencyMs = parseInt(document.getElementById('strobe-frequency-timecode').value) || 0; 
 
             if (isNaN(timeMs)) return alert("Entrez un temps en millisecondes valide.");
             
@@ -522,7 +572,7 @@
             if (preset.type === 'color' || preset.type === 'effect') { finalValue = filterColor; }
             if (preset.type === 'image') { finalColor = filterColor; }
             
-            pushEvent(timeMs, target, preset.type, finalValue, finalColor, fadeMs);
+            pushEvent(timeMs, target, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
         }
 
         function addChaseEvent() {
@@ -531,6 +581,7 @@
             const presetIndex = parseInt(document.getElementById('chase-action').value);
             const filterColor = document.getElementById('gobo-filter-color').value;
             const fadeMs = parseInt(document.getElementById('fade-time-ms').value) || 0; 
+            const frequencyMs = parseInt(document.getElementById('strobe-frequency-timecode').value) || 0; 
             const target1 = document.getElementById('chase-group-1').value; 
             const target2 = document.getElementById('chase-group-2').value; 
 
@@ -544,8 +595,8 @@
             if (preset.type === 'color' || preset.type === 'effect') { finalValue = filterColor; }
             if (preset.type === 'image') { finalColor = filterColor; }
             
-            pushEvent(timeMs, target1, preset.type, finalValue, finalColor, fadeMs);
-            pushEvent(timeMs + delayMs, target2, preset.type, finalValue, finalColor, fadeMs);
+            pushEvent(timeMs, target1, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
+            pushEvent(timeMs + delayMs, target2, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
 
             alert(`Séquence Délay (${delayMs}ms) ajoutée.`);
         }
@@ -568,9 +619,15 @@
                 let details = '';
                 
                 if (event.type === 'color' || event.type === 'effect') {
-                    const colorDisplay = `<span style="color:${event.value}; font-weight: bold;">${event.type.toUpperCase()}</span>`;
-                    details = `${colorDisplay}`;
-                    markerColor = event.value;
+                    const colorDisplay = `<span style="color:${event.color}; font-weight: bold;">${event.type.toUpperCase()}</span>`;
+                    
+                    details = colorDisplay;
+                    if (event.value.startsWith('STROBE')) { 
+                         let strobeType = (event.value === 'STROBE_RND') ? 'RND' : 'RÉGULIER';
+                         details = `STROBE (${strobeType}: ${event.frequency_ms}ms) sur ${event.color}`;
+                    }
+                    
+                    markerColor = event.color;
                 } else if (event.type === 'image') {
                     const goboName = PRESET_LIBRARY.find(p => p.value === event.value)?.name || 'Gobo Custom';
                     details = `GOBO: ${goboName.split(':').pop().trim()}`;
@@ -610,7 +667,7 @@
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = totalSeconds % 60;
-            const milliseconds = Math.floor((ms % 1000) / 10); // Précision au centième
+            const milliseconds = Math.floor((ms % 1000) / 10); 
             
             const pad = (num, digits = 2) => num.toString().padStart(digits, '0');
             
@@ -623,11 +680,11 @@
         }
 
         function startStopWatch() {
-            if (stopwatchInterval) return; // Déjà en cours
+            if (stopwatchInterval) return; 
             
-            if (startTime === 0) { // Premier démarrage
+            if (startTime === 0) { 
                 startTime = Date.now();
-            } else { // Reprise après pause
+            } else { 
                  startTime = Date.now() - elapsedTime;
             }
             
@@ -703,6 +760,7 @@
             const target = document.getElementById('prog-target').value;
             const color = document.getElementById('prog-color').value;
             const fadeMs = parseInt(document.getElementById('prog-fade-ms').value) || 0; 
+            const frequencyMs = parseInt(document.getElementById('strobe-frequency-prog').value) || 0; 
             
             const preset = PRESET_LIBRARY[presetIndex]; 
             let finalValue = preset.value;
@@ -711,7 +769,7 @@
             if (preset.type === 'color' || preset.type === 'effect') { finalValue = color; }
             if (preset.type === 'image') { finalColor = color; }
 
-            return { target, type: preset.type, value: finalValue, color: finalColor, fade_ms: fadeMs };
+            return { target, type: preset.type, value: finalValue, color: finalColor, fade_ms: fadeMs, frequency_ms: frequencyMs }; 
         }
 
         function previewScene() {
@@ -729,7 +787,6 @@
             
             alert(`Scène "${cueName}" enregistrée en CUE !`);
             
-            // Mise à jour de l'affichage Live
             if (document.getElementById('LiveSimple').classList.contains('active')) {
                 renderLiveButtons();
             }
@@ -893,10 +950,18 @@
                 btn.style.setProperty('--btn-color', bgColor);
                 btn.style.color = (bgColor === '#FFFFFF' || bgColor === 'white') ? '#121212' : 'white';
 
+                // Affichage de la fréquence du Strobe dans le statut
+                let statusText = `${cue.target} | ${cue.type.toUpperCase()} | ${cue.fade_ms}ms`;
+                if (cue.value.startsWith('STROBE')) {
+                     let strobeType = (cue.value === 'STROBE_RND') ? 'RND' : 'RÉGULIER';
+                     statusText = `STROBE ${strobeType} | ${cue.frequency_ms}ms | ${cue.target}`;
+                }
+
+
                 btn.innerHTML = `
                     ${name.toUpperCase()}
                     <div class="cue-status">
-                        ${cue.target} | ${cue.type.toUpperCase()} | ${cue.fade_ms}ms
+                        ${statusText}
                     </div>
                 `;
                 btn.onclick = () => triggerCue(name);
