@@ -16,12 +16,12 @@
             background-color: #000;
             color: #FFF;
             overflow: hidden;
-            transition: background-color 0.4s ease; /* Légèrement plus rapide */
+            transition: background-color 0.4s ease;
             font-family: 'Roboto', sans-serif;
             text-align: center;
         }
 
-        /* Message d'accueil style "App Screen" */
+        /* Message d'accueil style "App Screen" de CrowdGlow */
         #content {
             z-index: 10;
             position: absolute; 
@@ -116,7 +116,7 @@
         let isSyncActive = false;
         let goboTimeout; 
         
-        // Variables pour le Strobe
+        // Variables pour le Strobe 
         let strobeInterval = null;
         let isStrobing = false;
 
@@ -133,6 +133,7 @@
             connectionMessage.style.borderColor = '#4CAF50';
             connectionMessage.style.opacity = 1;
             
+            // Afficher le message d'accueil et le cacher après 10s
             contentDiv.style.opacity = 1;
             setTimeout(() => {
                 connectionMessage.style.opacity = 0;
@@ -151,7 +152,7 @@
         });
 
         // ===================================
-        // Logique Strobe Corrigée (Stable et Forcée)
+        // Logique Strobe Corrigée (V3 : Stable et Forcée)
         // ===================================
         
         function stopStrobe() {
@@ -162,16 +163,15 @@
             }
             // Retour au noir par défaut et réactivation de la transition douce
             document.body.style.backgroundColor = '#000000'; 
-            document.body.style.transition = 'background-color 0.4s ease'; 
+            document.body.style.transition = 'background-color 0.5s ease'; 
         }
         
         // Fonction pour démarrer le Strobe
         function startStrobe(data) {
             stopStrobe(); 
             
-            // Fréquence en ms. Le temps total d'un cycle (Allumé + Éteint)
             const totalCycleMs = data.frequency_ms || 100;
-            // L'intervalle est la moitié de la durée du cycle total. Min 20ms.
+            // Intervalle = Moitié du temps de cycle
             const intervalMs = Math.max(20, Math.floor(totalCycleMs / 2)); 
 
             const flashColor = data.color || '#FFFFFF'; 
@@ -189,7 +189,7 @@
                 }
                 isOn = !isOn;
                 
-            }, intervalMs); 
+            }, intervalMs);
 
             isStrobing = true;
         }
@@ -210,16 +210,14 @@
             goboDisplay.style.opacity = 0;
             goboDisplay.style.backgroundImage = 'none';
 
-            // Gérer les transitions de fondu (Fade)
-            let duration = data.fade_ms || 0;
-            
-            // Si c'est un STROBE, on le gère immédiatement (pour éviter les transitions CSS)
+            // Gérer le cas du STROBE immédiatement
             if (data.type === 'effect' && data.value.startsWith('STROBE')) {
                 startStrobe(data); 
-                return; 
+                return; // Sortir pour ne pas écraser la transition et le background
             }
             
             // Si ce n'est PAS un STROBE, on définit la transition normale
+            let duration = data.fade_ms || 0;
             if (duration > 0) {
                 body.style.transition = `background-color ${duration}ms linear, filter ${duration}ms linear`;
                 goboDisplay.style.transition = `opacity ${duration}ms linear`;
@@ -228,7 +226,7 @@
                 goboDisplay.style.transition = 'none';
             }
 
-            // Gérer les types d'actions
+            // Gérer les types d'actions (Non-Strobe)
             switch (data.type) {
                 case 'color':
                     body.style.backgroundColor = data.value;
@@ -263,7 +261,7 @@
         }
         
         // ===================================
-        // Logique de Synchronisation (Inchangée)
+        // Logique de Synchronisation
         // ===================================
 
         socket.on('execute', (data) => {
@@ -291,7 +289,6 @@
                 nextEventIndex++;
             }
         });
-
 
     </script>
 </body>
