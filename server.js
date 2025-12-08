@@ -1,65 +1,146 @@
-const express = require("express");
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
+
 const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http);
-const path = require("path");
+const server = http.createServer(app);
+const io = socketIo(server);
 
-// Servir les fichiers statiques (index.html, admin.html, styles...)
-app.use(express.static("public"));
+const PORT = 3000;
 
-// Route de l'interface Admin
-app.get("/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "admin.html"));
-});
+// ===============================================
+// MULTER CONFIGURATION (Gère l'upload de fichiers)
+// ===============================================
 
-// Route de l'interface Client (téléphone)
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+// S'assurer que le répertoire 'uploads' existe
+const uploadDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-io.on("connection", (socket) => {
-  // Attribution aléatoire du groupe et génération de l'ID court
-  const group = Math.random() < 0.5 ? "Groupe A" : "Groupe B";
-  const id = socket.id.substring(0, 4).toUpperCase();
-  
-  socket.join(group); // Joint la Room du groupe (A ou B)
-  socket.join("all"); // Joint la Room 'all'
-
-  // Envoi des infos d'identité au téléphone
-  socket.emit("welcome", { id: id, group: group, color: group === "Groupe A" ? "#FF0000" : "#0000FF" });
-  io.emit("update-count", { count: io.engine.clientsCount });
-
-  socket.on("disconnect", () => {
-    io.emit("update-count", { count: io.engine.clientsCount });
-  });
-
-  // RÉGIE : Réception et diffusion de la Timeline (au début de la séquence)
-  socket.on("timeline-load", (data) => {
-    // Diffuse la timeline à tous les clients
-    io.emit("timeline-load", data); 
-    console.log("Timeline chargée et prête à être synchronisée.");
-  });
-
-  // RÉGIE : Réception et diffusion du Time Code (à chaque tick)
-  socket.on("timecode-sync", (data) => {
-    // Diffuse la position de lecture à tous les clients
-    io.emit("timecode-sync", data);
-  });
-
-  // Contrôle manuel (peut être utilisé pour des overrides rapides)
-  socket.on("admin-order", (data) => {
-    if (data.target === "all") {
-        socket.broadcast.emit("execute", data);
-    } else if (data.target === "Groupe A" || data.target === "Groupe B") {
-        socket.to(data.target).emit("execute", data);
-    } else {
-        // Envoi ciblé par ID (on broadcast, le client filtre)
-        socket.broadcast.emit("execute-specific", data);
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        // Garder le nom de fichier original et l'extension
+        cb(null, Date.now() + '-' + file.originalname.replace(/ /g, "_"));
     }
-  });
 });
 
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-  console.log(`Serveur démarré sur le port ${PORT}`);
+const upload = multer({ storage: storage });
+
+// ===============================================
+// EXPRESS MIDDLEWARE & ROUTES
+// ===============================================
+
+// Servir les fichiers statiques (index.html, admin.html, styles, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+
+// Route pour l'interface d'administration
+app.get('/admin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Route pour l'upload de l'audio
+app.post('/upload-audio', upload.single('audioFile'), (req, res) => {
+    if (!req.file) {
+        return res.json({ success: false, message: "Aucun fichier audio n'a été uploadé." });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    console.log(`Audio uploadé: ${fileUrl}`);
+    res.json({ success: true, url: fileUrl });
+});
+
+// Route pour l'upload de Gobos (images)
+app.post('/upload-gobo', upload.single('goboFile'), (req, res) => {
+    if (!req.file) {
+        return res.json({ success: false, message: "Aucun fichier Gobo n'a été uploadé." });
+    }
+    const fileUrl = `/uploads/${req.file.filename}`;
+    console.log(`Gobo uploadé: ${fileUrl}`);
+    res.json({ success: true, url: fileUrl });
+});
+
+
+// ===============================================
+// SOCKET.IO LOGIC
+// ===============================================
+
+let clients = {}; // Stocke les clients connectés par ID
+let groupCounts = {}; // Stocke le nombre de clients par groupe
+let timeline = [];
+
+io.on('connection', (socket) => {
+    console.log('Nouveau client connecté:', socket.id);
+    
+    // Initialisation du client dans un groupe temporaire
+    clients[socket.id] = { group: 'unknown' };
+    io.emit('update-count', { count: Object.keys(clients).length });
+
+    // Enregistrement du client dans son groupe
+    socket.on('client-group', (data) => {
+        const previousGroup = clients[socket.id]?.group;
+        
+        // Mettre à jour les comptes de l'ancien groupe
+        if (previousGroup && previousGroup !== 'unknown') {
+            groupCounts[previousGroup] = (groupCounts[previousGroup] || 1) - 1;
+            if (groupCounts[previousGroup] <= 0) delete groupCounts[previousGroup];
+        }
+
+        // Mettre à jour le nouveau groupe
+        clients[socket.id] = { group: data.group };
+        groupCounts[data.group] = (groupCounts[data.group] || 0) + 1;
+        
+        console.log(`Client ${socket.id} rejoint le groupe: ${data.group}`);
+        io.emit('update-count', { count: Object.keys(clients).length });
+    });
+
+    // Commande envoyée par l'admin (Live Console ou Preview)
+    socket.on('admin-order', (data) => {
+        // Envoi de la commande à tous les clients
+        io.emit('execute', data); 
+        console.log(`Ordre exécuté: ${JSON.stringify(data)}`);
+    });
+
+    // Chargement de la timeline (Admin -> Tous les clients)
+    socket.on('timeline-load', (data) => {
+        timeline = data.timeline;
+        io.emit('timeline-start', { timeline: timeline });
+        console.log(`Timeline chargée avec ${timeline.length} événements.`);
+    });
+    
+    // Synchronisation Timecode (Admin -> Tous les clients)
+    socket.on('timecode-sync', (data) => {
+        // Envoi de l'heure actuelle aux clients pour qu'ils déclenchent eux-mêmes les événements.
+        io.emit('timecode-sync', data);
+    });
+
+    // Gestion de la déconnexion
+    socket.on('disconnect', () => {
+        const disconnectedGroup = clients[socket.id]?.group;
+        
+        if (disconnectedGroup && disconnectedGroup !== 'unknown') {
+            groupCounts[disconnectedGroup] = (groupCounts[disconnectedGroup] || 1) - 1;
+            if (groupCounts[disconnectedGroup] <= 0) delete groupCounts[disconnectedGroup];
+        }
+        
+        delete clients[socket.id];
+        console.log('Client déconnecté:', socket.id);
+        io.emit('update-count', { count: Object.keys(clients).length });
+    });
+});
+
+// ===============================================
+// DÉMARRAGE DU SERVEUR
+// ===============================================
+
+server.listen(PORT, () => {
+    console.log(`Serveur démarré sur http://localhost:${PORT}`);
+    console.log(`Interface Client: http://localhost:${PORT}`);
+    console.log(`Interface Admin: http://localhost:${PORT}/admin`);
 });
