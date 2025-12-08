@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;700&display=swap" rel="stylesheet">
     <style>
+        /* Styles de base pour le plein écran immersif */
         body, html {
             height: 100%;
             margin: 0;
@@ -20,21 +21,20 @@
             text-align: center;
         }
 
-        #status-bar {
+        /* Message de connexion temporaire */
+        #connection-message {
             position: fixed;
-            top: 0;
-            width: 100%;
-            padding: 5px;
-            background: rgba(0, 0, 0, 0.7);
-            font-size: 0.8em;
-            color: #888;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: #4CAF50; /* Vert pour la connexion */
+            opacity: 0;
+            transition: opacity 0.5s ease;
             z-index: 1000;
+            pointer-events: none; /* Ne pas bloquer les clics */
         }
-        #connection-status {
-            color: #FF5252; /* Rouge pour déconnecté */
-            margin-right: 15px;
-        }
-
+        
         #gobo-display {
             width: 100%;
             height: 100%;
@@ -52,40 +52,32 @@
             z-index: 10;
             padding: 20px;
         }
-
-        #group-id {
-            font-size: 1.5em;
-            font-weight: 700;
-            color: #00bcd4; /* Cyan */
-        }
         
         #timer-display {
             font-size: 4em;
             margin-top: 50px;
             color: #FFC107; /* Jaune */
             text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+            display: none; /* Masqué par défaut */
         }
     </style>
 </head>
 <body>
-    <div id="status-bar">
-        <span id="connection-status">DÉCONNECTÉ</span>
-        | Clients connectés: <span id="client-count">0</span> 
-        | Mon Groupe: <span id="group-id"></span>
-    </div>
+    
+    <div id="connection-message"></div>
     
     <div id="gobo-display"></div>
 
     <div id="content">
         <h1>SPECTACLE SYNC</h1>
-        <p>Veuillez attendre les instructions de la régie.</p>
+        <p>En attente des instructions de la régie.</p>
         
-        <h2 id="timer-display" style="display:none;">00:00.000</h2>
+        <h2 id="timer-display">00:00.000</h2>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Détermination du groupe (simulée ici pour l'exemple)
+        // Définissez ici le groupe du client (ou utilisez une variable d'environnement/URL)
         let CLIENT_GROUP = 'Groupe A'; 
 
         const socket = io();
@@ -94,109 +86,63 @@
         let isSyncActive = false;
         let goboTimeout; 
         
-        // Variables pour le Strobe (utilisé maintenant avec setTimeout récursif)
         let strobeInterval = null;
         let isStrobing = false;
 
-        // ===================================
-        // Initialisation & Connexion
-        // ===================================
+        const connectionMessage = document.getElementById('connection-message');
 
-        document.getElementById('group-id').innerText = CLIENT_GROUP;
+        // ===================================
+        // Initialisation & Connexion Simplifiée
+        // ===================================
 
         socket.on('connect', () => {
-            document.getElementById('connection-status').innerText = 'CONNECTÉ';
-            document.getElementById('connection-status').style.color = '#4CAF50'; 
+            connectionMessage.innerText = `CONNECTÉ au ${CLIENT_GROUP}`;
+            connectionMessage.style.color = '#4CAF50';
+            connectionMessage.style.opacity = 1;
+            
+            // Cacher le message après 10 secondes (10000 ms)
+            setTimeout(() => {
+                connectionMessage.style.opacity = 0;
+            }, 10000); 
+
             socket.emit('client-group', { group: CLIENT_GROUP });
         });
 
         socket.on('disconnect', () => {
-            document.getElementById('connection-status').innerText = 'DÉCONNECTÉ';
-            document.getElementById('connection-status').style.color = '#FF5252'; 
+            connectionMessage.innerText = 'DÉCONNECTÉ';
+            connectionMessage.style.color = '#FF5252'; 
+            connectionMessage.style.opacity = 1; 
             isSyncActive = false;
             stopStrobe(); 
         });
 
-        socket.on('update-count', (data) => {
-            document.getElementById('client-count').innerText = data.count - 1; 
-        });
-
         // ===================================
-        // 1. Mode LIVE Manuel & Aperçu PROG
+        // Logique Strobe Corrigée (Stable)
         // ===================================
         
-        socket.on('execute', (data) => {
-            if (data.target === CLIENT_GROUP || data.target === 'all') {
-                applyEffect(data);
-            }
-        });
-
-        // ===================================
-        // 2. Mode TIMECODE Synchro
-        // ===================================
-
-        socket.on('timeline-start', (data) => {
-            timeline = data.timeline.filter(e => e.target === CLIENT_GROUP || e.target === 'all');
-            nextEventIndex = 0;
-            isSyncActive = true;
-            console.log(`Timeline activée pour ${CLIENT_GROUP}: ${timeline.length} événements à suivre.`);
-            document.getElementById('timer-display').style.display = 'block';
-        });
-
-        socket.on('timecode-sync', (data) => {
-            if (!isSyncActive) return;
-
-            const currentTime = data.time_ms;
-            document.getElementById('timer-display').innerText = (currentTime / 1000).toFixed(3);
-
-            // Vérifier les événements à déclencher
-            while (nextEventIndex < timeline.length && timeline[nextEventIndex].time_ms <= currentTime) {
-                const event = timeline[nextEventIndex];
-                applyEffect(event);
-                nextEventIndex++;
-            }
-        });
-        
-        // ===================================
-        // Logique d'Application des Effets
-        // ===================================
-        
-        // Fonction utilitaire pour générer une couleur hex aléatoire (non utilisée pour le strobe)
-        function getRandomColor() {
-            const letters = '0123456789ABCDEF';
-            let color = '#';
-            for (let i = 0; i < 6; i++) {
-                color += letters[Math.floor(Math.random() * 16)];
-            }
-            return color;
-        }
-        
-        // Fonction pour arrêter le Strobe
         function stopStrobe() {
             if (strobeInterval) {
-                clearTimeout(strobeInterval); // Utiliser clearTimeout
+                clearInterval(strobeInterval); 
                 strobeInterval = null;
                 isStrobing = false;
             }
-            document.body.style.backgroundColor = '#000000'; // Retour au noir après Strobe
+            document.body.style.backgroundColor = '#000000'; 
             document.body.style.transition = 'background-color 0.5s ease';
         }
         
-        // Fonction pour démarrer le Strobe (gestion du mode RND par setTimeout récursif)
+        // Fonction pour démarrer le Strobe (Maintenant simple et régulier)
         function startStrobe(data) {
             stopStrobe(); 
             
-            const isRandom = data.value === 'STROBE_RND';
+            // Fréquence en ms (basée sur le curseur de la régie)
+            const frequency = data.frequency_ms || 100; 
+            const flashColor = data.color || '#FFFFFF'; 
             const body = document.body;
             let isOn = false;
-            let currentFrequency = data.frequency_ms || 100;
-            const flashColor = data.color || '#FFFFFF'; 
 
             body.style.transition = 'none';
 
-            function strobeTick() {
-                
-                // 1. Déclenchement du Flash (ON/OFF)
+            strobeInterval = setInterval(() => {
                 if (isOn) {
                     body.style.backgroundColor = '#000000'; // Éteint
                 } else {
@@ -204,37 +150,20 @@
                 }
                 isOn = !isOn;
                 
-                // 2. Calcul de la Prochaine Fréquence
-                let nextFrequency = currentFrequency;
-                
-                if (isRandom) {
-                    // Calcul de la plage d'aléa basée sur la valeur du curseur (currentFrequency)
-                    // Plage choisie: +/- 50% de la valeur du curseur, avec un minimum absolu de 50ms
-                    
-                    const minVariation = Math.max(50, currentFrequency * 0.5); 
-                    const maxVariation = currentFrequency * 1.5; 
-                    
-                    // Fréquence aléatoire dans la plage [minVariation, maxVariation]
-                    nextFrequency = Math.floor(Math.random() * (maxVariation - minVariation + 1) + minVariation);
-                    
-                    // Assurer que la fréquence ne soit pas plus rapide que 50ms
-                    nextFrequency = Math.max(50, nextFrequency); 
-                }
-                
-                // 3. Relance du Timer avec la nouvelle fréquence (régulière ou aléatoire)
-                strobeInterval = setTimeout(strobeTick, nextFrequency);
-            }
-            
-            // Démarrage initial
-            strobeInterval = setTimeout(strobeTick, currentFrequency);
+            }, frequency);
+
             isStrobing = true;
         }
 
+
+        // ===================================
+        // Logique d'Application des Effets
+        // ===================================
+        
         function applyEffect(data) {
             const body = document.body;
             const goboDisplay = document.getElementById('gobo-display');
             
-            // Arrêter le strobe si un nouvel effet est appliqué
             stopStrobe(); 
             
             if (goboTimeout) clearTimeout(goboTimeout);
@@ -253,21 +182,19 @@
             // Gérer les types d'actions
             switch (data.type) {
                 case 'color':
-                    // Changement de couleur unie
                     body.style.backgroundColor = data.value;
                     body.style.filter = 'none';
                     break;
 
                 case 'effect':
-                    body.style.backgroundColor = data.value; // Par défaut (pour effets sans Strobe)
+                    body.style.backgroundColor = data.value; 
                     body.style.filter = 'none';
 
                     if (data.value === 'OFF') {
-                        // Retour au noir
                         body.style.backgroundColor = '#000000';
                         body.style.filter = 'none';
                     } else if (data.value.startsWith('STROBE')) { 
-                        // Démarrer le Strobe (FAST, MEDIUM, RND)
+                        // Démarrer le Strobe
                         startStrobe(data); 
                     } else if (data.value === 'PULSE_SLOW') {
                          body.style.backgroundColor = data.color || '#00ff00'; 
@@ -276,7 +203,6 @@
                     break;
 
                 case 'image':
-                    // Affichage de Gobo (Image)
                     body.style.backgroundColor = data.color || '#000000'; 
                     body.style.filter = 'none';
                     
@@ -289,6 +215,37 @@
                     break;
             }
         }
+        
+        // ===================================
+        // Logique de Synchronisation
+        // ===================================
+
+        socket.on('execute', (data) => {
+            if (data.target === CLIENT_GROUP || data.target === 'all') {
+                applyEffect(data);
+            }
+        });
+
+        socket.on('timeline-start', (data) => {
+            timeline = data.timeline.filter(e => e.target === CLIENT_GROUP || e.target === 'all');
+            nextEventIndex = 0;
+            isSyncActive = true;
+            document.getElementById('timer-display').style.display = 'block';
+        });
+
+        socket.on('timecode-sync', (data) => {
+            if (!isSyncActive) return;
+
+            const currentTime = data.time_ms;
+            document.getElementById('timer-display').innerText = (currentTime / 1000).toFixed(3);
+
+            while (nextEventIndex < timeline.length && timeline[nextEventIndex].time_ms <= currentTime) {
+                const event = timeline[nextEventIndex];
+                applyEffect(event);
+                nextEventIndex++;
+            }
+        });
+
 
     </script>
 </body>
