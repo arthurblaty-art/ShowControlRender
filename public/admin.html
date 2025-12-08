@@ -1,296 +1,302 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>RÉGIE PRO | SPECTACLE CONTROL</title>
+    <title>CONSOLE DMX | SPECTACLE PRO</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.js"></script>
     <style>
         /* ==================================== */
-        /* BASE & LAYOUT (Aspect Console PRO) */
+        /* BASE & LAYOUT (Inspiration Console DMX) */
         /* ==================================== */
         :root {
-            --color-primary: #00bcd4; /* Cyan clair (Accent principal) */
-            --color-secondary: #FFC107; /* Jaune (Accent secondaire/Alerte) */
-            --color-background: #0D0D0D; 
+            --color-crowdglow: #00bcd4; /* Cyan clair (Accent principal) */
+            --color-secondary: #FFC107; /* Jaune (Alertes) */
+            --color-background: #0A0A0A; /* Noir profond */
             --color-card: #181818;
             --color-input: #222222;
             --color-text: #EAEAEA;
             --color-faint: #B0B0B0;
             --color-border: #333333;
+            --color-red: #FF5252;
+            --color-green: #4CAF50;
         }
 
         body { 
             font-family: 'Roboto', sans-serif; 
-            padding: 20px; 
+            padding: 15px; 
             background: var(--color-background);
             color: var(--color-text); 
-            max-width: 1400px; 
+            max-width: 1600px; 
             margin: auto; 
             line-height: 1.4;
         }
         h3 { 
-            color: var(--color-primary); 
+            color: var(--color-crowdglow); 
             border-bottom: 1px solid var(--color-border); 
             padding-bottom: 10px; 
-            margin-bottom: 25px; 
+            margin-bottom: 20px; 
             font-weight: 300; 
-            letter-spacing: 1px;
-            font-size: 1.8rem;
+            letter-spacing: 2px;
+            font-size: 2rem;
         }
         .card { 
             background: var(--color-card); 
-            padding: 20px; 
-            border-radius: 6px; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            border-left: 4px solid var(--accent-color, var(--color-border)); 
-            transition: border-left-color 0.2s;
+            padding: 15px; 
+            border-radius: 4px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            border-left: 3px solid var(--accent-color, var(--color-border)); 
         }
         .card h4 { 
             color: var(--accent-color, var(--color-text)); 
             margin-top: 0; 
             font-weight: 500; 
-            font-size: 1.2rem; 
-            margin-bottom: 15px;
+            font-size: 1.1rem; 
+            margin-bottom: 10px;
         }
-        #count { float: right; color: #4CAF50; font-weight: 600; font-size: 1.1rem; }
+        #count { float: right; color: var(--color-green); font-weight: 600; font-size: 1.1rem; }
         
         /* INPUTS & BOUTONS */
         button, select, input:not([type="color"]):not([type="file"]):not([type="range"]) { 
             width: 100%; 
-            padding: 10px 12px; 
-            margin-top: 6px; 
-            font-size: 15px; 
-            border-radius: 4px; 
+            padding: 8px 10px; 
+            margin-top: 5px; 
+            font-size: 14px; 
+            border-radius: 3px; 
             border: 1px solid var(--color-border); 
             background: var(--color-input);
             color: var(--color-text);
-            font-weight: 300;
             box-sizing: border-box;
         }
-        input[type="color"] { height: 40px; padding: 0; border-radius: 4px; cursor: pointer; border: none; }
-        label { display: block; margin-top: 15px; font-size: 0.9rem; color: var(--color-faint); font-weight: 500;}
+        input[type="color"] { height: 35px; padding: 0; border-radius: 3px; cursor: pointer; border: none; }
+        label { display: block; margin-top: 10px; font-size: 0.85rem; color: var(--color-faint); font-weight: 500;}
         .btn-action { 
             background: var(--btn-color, #333); 
             color: white; 
             cursor: pointer; 
             font-weight: 500; 
             border: none; 
-            padding: 12px;
+            padding: 10px;
             transition: background 0.2s; 
         }
         .btn-action:hover { filter: brightness(1.1); }
         .btn-action:active { transform: scale(0.99); }
         
-        /* Style pour le Curseur de Fréquence */
+        /* FADERS (Inspiration DMX) */
         input[type="range"] {
             -webkit-appearance: none;
-            height: 8px;
+            height: 10px;
             background: var(--color-border);
             border-radius: 5px;
-            margin-top: 10px;
+            margin-top: 8px;
             cursor: pointer;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--color-primary);
+            width: 16px;
+            height: 25px; 
+            border-radius: 3px;
+            background: var(--color-crowdglow);
             cursor: pointer;
+            border: 1px solid #FFF;
         }
-        #freq-label { display: flex; justify-content: space-between; align-items: center; }
-
+        .fader-group { 
+            margin-top: 15px; 
+            padding: 8px; 
+            background: #121212; 
+            border-radius: 4px;
+        }
+        .fader-group label { margin-top: 5px; }
 
         /* NAVIGATION PAR ONGLET */
-        #tabs { display: flex; border-bottom: 2px solid var(--color-border); margin-bottom: 20px; }
+        #tabs { display: flex; border-bottom: 2px solid var(--color-border); margin-bottom: 15px; }
         .tab-button {
-            padding: 12px 25px;
+            padding: 10px 20px;
+            font-size: 1em;
             cursor: pointer;
             background: var(--color-card);
             color: var(--color-faint);
             border: none;
-            border-radius: 6px 6px 0 0;
-            margin-right: 2px;
+            border-radius: 4px 4px 0 0;
+            margin-right: 1px;
             font-weight: 500;
-            transition: background 0.3s, color 0.3s;
         }
         .tab-button.active {
-            background: var(--color-primary);
+            background: var(--color-crowdglow);
             color: var(--color-card);
-            box-shadow: 0 -2px 10px rgba(0, 188, 212, 0.5);
+            box-shadow: 0 -2px 8px rgba(0, 188, 212, 0.5);
             font-weight: 700;
         }
-        .tab-content { padding: 5px 0; display: none; }
-        .tab-content.active { display: block; }
+        
+        /* DISPOSITION PRINCIPALE (CrowdGlow Broadcast App Style) */
+        #Prog { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 15px; }
+        #LiveSimple { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; } 
 
-        /* WAVESURFER & TIMELINE */
-        #waveform { background: #000; border-radius: 4px; margin: 15px 0; cursor: crosshair; }
-        #events-list { max-height: 300px; overflow-y: auto; background: #121212; padding: 10px; border-radius: 4px; border: 1px solid #282828;}
-        .timeline-event { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #282828; font-size: 0.9em; align-items: center; }
-        .timeline-event:last-child { border-bottom: none; }
-        .time-display { font-weight: bold; width: 70px; color: var(--color-primary); cursor: pointer; }
-        .event-details { flex-grow: 1; margin: 0 10px; color: var(--color-faint); }
-        .event-action { color: #FF5252; cursor: pointer; font-size: 1.1em; }
-        
-        /* PROG GRID */
-        #Prog { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 20px; }
-        #gobo-canvas { 
-            background: #121212; 
-            border: 1px solid var(--color-primary); 
-            display: block; 
-            margin: 10px auto; 
-            cursor: crosshair;
-            box-shadow: 0 0 10px rgba(0, 188, 212, 0.2);
-        }
-        .draw-controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
-        
-        /* LIVE GRID */
-        #LiveSimple { padding: 20px; }
+
+        /* LIVE CONSOLE GRID */
         #live-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px;
             margin-top: 10px;
         }
         .live-cue-button {
-            height: 80px;
-            font-size: 1.1rem;
+            height: 60px; 
+            font-size: 0.9rem;
             font-weight: 500;
             color: var(--color-text);
             background: #282828;
             border: 1px solid #505050;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            text-align: center;
         }
-        .live-cue-button:active {
-            transform: scale(0.98);
-            box-shadow: 0 0 15px var(--btn-color);
-        }
-        .cue-status { font-size: 0.75rem; opacity: 0.7; }
+        .cue-status { font-size: 0.7rem; opacity: 0.7; }
         
-        /* LIVE SIMPLE HORLOGE */
+        /* Timecode Display Large */
         #big-time-display {
             font-family: 'Roboto', monospace;
-            font-size: 5rem;
+            font-size: 3rem; 
             text-align: center;
-            margin: 30px 0 50px 0;
+            margin: 10px 0;
             color: var(--color-secondary);
-            text-shadow: 0 0 15px rgba(255, 193, 7, 0.5);
-            padding: 10px;
-            border: 1px solid var(--color-border);
+            text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+            padding: 15px;
+            border: 1px solid var(--color-secondary);
             border-radius: 4px;
-            background: var(--color-card);
+            background: #121212;
+            font-weight: bold;
         }
+        #current-time { font-weight: bold; font-size: 1.2rem; color: var(--color-secondary); }
+        
+        /* TIMELINE List */
+        #events-list { max-height: 250px; overflow-y: auto; background: #121212; padding: 10px; border-radius: 4px; border: 1px solid #282828; margin-top: 15px;}
+        .timeline-event { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #282828; font-size: 0.9em; align-items: center; }
+        .timeline-event:last-child { border-bottom: none; }
+        .time-display { font-weight: bold; width: 70px; color: var(--color-crowdglow); cursor: pointer; }
+        .event-details { flex-grow: 1; margin: 0 10px; color: var(--color-faint); }
+        .event-action { color: var(--color-red); cursor: pointer; font-size: 1.1em; }
     </style>
 </head>
 <body>
-    <h3>💡 RÉGIE SPECTACLE PRO <span id="count">1 connecté</span></h3>
+    <h3>💡 CONSOLE SPECTACLE PRO <span id="count">1 connecté</span></h3>
 
     <div id="tabs">
-        <button class="tab-button active" onclick="openTab(event, 'Timecode')"><i class="fas fa-clock"></i> TIMECODE (Timeline)</button>
-        <button class="tab-button" onclick="openTab(event, 'LiveSimple')"><i class="fas fa-hand-pointer"></i> LIVE (Cues Rapides)</button>
-        <button class="tab-button" onclick="openTab(event, 'Prog')"><i class="fas fa-tools"></i> PROGRAMMATION</button>
+        <button class="tab-button active" onclick="openTab(event, 'Timecode')"><i class="fas fa-wave-square"></i> TIMECODE (Timeline)</button>
+        <button class="tab-button" onclick="openTab(event, 'LiveSimple')"><i class="fas fa-gamepad"></i> LIVE CONSOLE (Cues & Faders)</button>
+        <button class="tab-button" onclick="openTab(event, 'Prog')"><i class="fas fa-palette"></i> PALETTE & MÉMOIRE</button>
     </div>
 
     <div id="Timecode" class="tab-content active">
-        <div class="card" style="--accent-color: var(--color-primary);">
-            <h4>🎵 Timeline & Audio</h4>
-            <div id="waveform" title="Cliquez pour repositionner la tête de lecture."></div>
-            
-            <input type="file" id="audioFile" accept="audio/*" onchange="loadAudio()" title="Chargez votre fichier MP3/WAV">
-            
-            <div id="timeline-controls" style="display: flex; gap: 15px; margin-top: 20px;">
-                <button onclick="togglePlayback()" id="playPauseButton" class="btn-action" style="--btn-color: #4CAF50; flex: 1;">
-                    <i class="fas fa-play"></i> PLAY / PAUSE
-                </button>
-                <button onclick="snapToTimecode()" class="btn-action" style="--btn-color: #5f5f5f; flex: 1;">
-                    <i class="fas fa-crosshairs"></i> SNAP TEMPS
-                </button>
-                <button onclick="startSync()" class="btn-action" style="--btn-color: #FF5252; flex: 1.5;">
-                    <i class="fas fa-bullhorn"></i> DÉMARRER SYNCHRO
-                </button>
+        <div style="display: grid; grid-template-columns: 3fr 1fr; gap: 15px;">
+            <div class="card" style="--accent-color: var(--color-crowdglow);">
+                <h4>🎵 Audio Timeline & Synchro</h4>
+                <div id="waveform" title="Cliquez pour repositionner la tête de lecture."></div>
+                
+                <input type="file" id="audioFile" accept="audio/*" onchange="loadAudio()" title="Chargez votre fichier MP3/WAV">
+                
+                <div id="timeline-controls" style="display: flex; gap: 15px; margin-top: 15px;">
+                    <button onclick="togglePlayback()" id="playPauseButton" class="btn-action" style="--btn-color: var(--color-green); flex: 1; padding: 15px;">
+                        <i class="fas fa-play"></i> PLAY / PAUSE
+                    </button>
+                    <button onclick="startSync()" class="btn-action" style="--btn-color: var(--color-red); flex: 1.5; padding: 15px;">
+                        <i class="fas fa-bullhorn"></i> DÉMARRER SYNCHRO
+                    </button>
+                </div>
+                <p style="text-align: center; font-size: 0.9rem; margin-top: 10px;">Temps actuel: <strong id="current-time">00:00.000</strong></p>
+                <div id="events-list"></div>
             </div>
-            <p style="text-align: center; font-size: 1.1rem; margin-top: 15px;">Temps actuel: <strong id="current-time">00:00.000</strong></p>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px;">
+
             <div class="card" style="--accent-color: var(--color-secondary);">
-                <h4>✨ Ajouter un Événement</h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                        <label for="event-time-ms">Temps (ms) :</label>
-                        <input type="number" id="event-time-ms" placeholder="Ex: 3500">
-                    </div>
-                    <div>
-                        <label for="fade-time-ms">Fade (ms) :</label>
-                        <input type="number" id="fade-time-ms" value="0" placeholder="Ex: 500">
-                    </div>
+                <h4>✨ Programmer Événement (<span id="total-events">0</span> Évèn.)</h4>
+                
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;"><label for="event-time-ms">Snap Temps (ms) :</label><input type="number" id="event-time-ms" placeholder="Ex: 3500"></div>
+                    <div style="flex: 1;"><button onclick="snapToTimecode()" class="btn-action" style="--btn-color: #5f5f5f; margin-top: 30px;">
+                        <i class="fas fa-crosshairs"></i> SNAP
+                    </button></div>
                 </div>
                 
-                <label for="preset-action">Action :</label>
+                <div class="fader-group">
+                    <label for="fade-time-ms">FADER FADE (ms) :</label>
+                    <input type="number" id="fade-time-ms" value="0" placeholder="Ex: 500">
+                </div>
+
+                <label for="preset-action">PALETTE ACTION :</label>
                 <select id="preset-action"></select>
 
-                <label for="strobe-frequency">Fréquence Strobe (ms) :</label>
-                <div id="freq-label">
-                    <span id="freq-value-timecode">100 ms</span>
-                    <span style="color:var(--color-faint); font-size:0.8em;">(50ms = Rapide)</span>
+                <div class="fader-group">
+                    <label for="strobe-frequency">FADER STROBE (ms) :</label>
+                    <div id="freq-label">
+                        <span id="freq-value-timecode">100 ms</span>
+                    </div>
+                    <input type="range" id="strobe-frequency-timecode" min="50" max="500" value="100" oninput="updateFreqValue('timecode')">
                 </div>
-                <input type="range" id="strobe-frequency-timecode" min="50" max="500" value="100" oninput="updateFreqValue('timecode')">
 
-
-                <label for="gobo-filter-color">Couleur/Filtre :</label>
+                <label for="gobo-filter-color">Couleur :</label>
                 <input type="color" id="gobo-filter-color" value="#FFFFFF">
                 
                 <label for="event-target">Ciblage :</label>
                 <select id="event-target"></select>
                 
                 <button onclick="addEvent()" class="btn-action" style="--btn-color: var(--color-secondary); margin-top: 20px;">
-                    <i class="fas fa-plus"></i> Ajouter à la Timeline
+                    <i class="fas fa-plus"></i> Ajouter Événement
                 </button>
             </div>
-            
-            <div class="card" style="--accent-color: var(--color-border);">
-                <h4><i class="fas fa-list-ol"></i> Timeline (<span id="total-events">0</span> Évèn.)</h4>
-                <div id="events-list"></div>
-            </div>
         </div>
-
+        
         <div class="card" style="--accent-color: #17a2b8;">
-            <h4>🔄 Séquence Délay / Chase</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <h4>🔄 Séquence Délay (Chase)</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                 <div><label for="chase-group-1">Départ :</label><select id="chase-group-1"></select></div>
-                <div><div><label for="chase-group-2">Arrivée :</label><select id="chase-group-2"></select></div></div>
+                <div><label for="chase-group-2">Arrivée :</label><select id="chase-group-2"></select></div>
+                <div><label for="chase-delay-ms">Délay (ms) :</label><input type="number" id="chase-delay-ms" value="100" placeholder="100"></div>
             </div>
-            <select id="chase-action" style="margin-top: 15px;"></select>
-            <input type="number" id="chase-delay-ms" value="100" placeholder="Délay entre les groupes (ms)">
-            <button onclick="addChaseEvent()" class="btn-action" style="--btn-color: #17a2b8; margin-top: 15px;">
+            <select id="chase-action" style="margin-top: 10px;"></select>
+            <button onclick="addChaseEvent()" class="btn-action" style="--btn-color: #17a2b8; margin-top: 10px;">
                 <i class="fas fa-share-alt"></i> Ajouter Séquence Délay
             </button>
         </div>
     </div>
     
     <div id="LiveSimple" class="tab-content">
-        <div class="card" style="--accent-color: var(--color-secondary);">
-            <h4>⏲️ Chronomètre de Référence</h4>
-            <div id="big-time-display">00:00:00</div>
-            <div style="display: flex; gap: 15px;">
-                <button onclick="startStopWatch()" class="btn-action" style="--btn-color: #4CAF50; flex: 1;">
-                    <i class="fas fa-play"></i> DÉMARRER CHRONO
-                </button>
-                <button onclick="resetStopWatch()" class="btn-action" style="--btn-color: #FF5252; flex: 1;">
-                    <i class="fas fa-stop"></i> RESET
-                </button>
-            </div>
-        </div>
-        
-        <div class="card" style="--accent-color: #4CAF50;">
-            <h4>🎹 Déclenchement Cues Rapides</h4>
+        <div class="card" style="--accent-color: var(--color-green);">
+            <h4>🎹 CUES (Triggers Rapides)</h4>
             <div id="live-grid">
                 </div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column;">
+            <div class="card" style="--accent-color: var(--color-secondary);">
+                <h4>⏲️ Chronomètre de Référence</h4>
+                <div id="big-time-display">00:00:00</div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="startStopWatch()" class="btn-action" style="--btn-color: var(--color-green); flex: 1;"><i class="fas fa-play"></i> DÉMARRER</button>
+                    <button onclick="resetStopWatch()" class="btn-action" style="--btn-color: var(--color-red); flex: 1;"><i class="fas fa-stop"></i> RESET</button>
+                </div>
+            </div>
+            
+            <div class="card" style="--accent-color: var(--color-crowdglow);">
+                <h4>⚡ Maître Flash/Strobe (Direct)</h4>
+                
+                <label for="prog-action-live">ACTION FLASH :</label>
+                <select id="prog-action-live"></select>
+                
+                <div class="fader-group">
+                    <label for="strobe-frequency-prog">FADER STROBE (ms) :</label>
+                    <div id="freq-label">
+                        <span id="freq-value-prog">100 ms</span>
+                    </div>
+                    <input type="range" id="strobe-frequency-prog" min="50" max="500" value="100" oninput="updateFreqValue('prog')">
+                </div>
+                
+                <input type="color" id="prog-color-live" value="#FFFFFF" style="margin-top: 10px;">
+                
+                <button onclick="previewScene(true)" class="btn-action" style="--btn-color: #5f5f5f; margin-top: 15px; padding: 15px;">
+                    <i class="fas fa-hand-pointer"></i> APPLIQUER LIVE (ALL)
+                </button>
+            </div>
         </div>
     </div>
 
@@ -298,42 +304,36 @@
     <div id="Prog" class="tab-content">
             
             <div class="card" style="--accent-color: #ff7f50;">
-                <h4>🔨 Programmation & Enregistrement</h4>
+                <h4>🔨 Programmation Palette</h4>
                 
-                <label for="prog-action">Action :</label>
+                <label for="prog-action">ACTION :</label>
                 <select id="prog-action"></select>
                 
-                <label for="strobe-frequency-prog">Fréquence Strobe (ms) :</label>
-                <div id="freq-label">
-                    <span id="freq-value-prog">100 ms</span>
-                    <span style="color:var(--color-faint); font-size:0.8em;">(50ms = Rapide)</span>
+                <div class="fader-group">
+                    <label for="prog-fade-ms">FADER FADE (ms) :</label>
+                    <input type="number" id="prog-fade-ms" value="500">
                 </div>
-                <input type="range" id="strobe-frequency-prog" min="50" max="500" value="100" oninput="updateFreqValue('prog')">
-
-                <label for="prog-color">Couleur/Filtre :</label>
-                <input type="color" id="prog-color" value="#FFFFFF">
                 
-                <label for="prog-fade-ms">Fade (ms) :</label>
-                <input type="number" id="prog-fade-ms" value="500">
+                <input type="color" id="prog-color" value="#FFFFFF">
                 
                 <label for="prog-target">Ciblage :</label>
                 <select id="prog-target"></select>
                 
-                <button onclick="previewScene()" class="btn-action" style="--btn-color: #5f5f5f; margin-top: 20px;">
-                    <i class="fas fa-eye"></i> Aperçu (Live)
+                <button onclick="previewScene()" class="btn-action" style="--btn-color: #5f5f5f; margin-top: 15px;">
+                    <i class="fas fa-eye"></i> Aperçu sur Cible
                 </button>
                 
                 <hr style="border-top: 1px dashed var(--color-border); margin: 20px 0;">
                 
-                <label for="cue-name">Nom du CUE (Scène) :</label>
-                <input type="text" id="cue-name" placeholder="Ex: Refrain Bleu Strobe">
+                <label for="cue-name">Nom du CUE (Mémoire) :</label>
+                <input type="text" id="cue-name" placeholder="Ex: Réfrain Bleu Strobe">
                 
                 <button onclick="saveSceneAsCue()" class="btn-action" style="--btn-color: #ff7f50; margin-top: 8px;">
-                    <i class="fas fa-save"></i> Enregistrer Scène en CUE
+                    <i class="fas fa-save"></i> Enregistrer CUE
                 </button>
             </div>
             
-            <div class="card" style="--accent-color: var(--color-primary);">
+            <div class="card" style="--accent-color: var(--color-crowdglow);">
                 <h4>🖼️ Gobo Designer (Dessin & Upload)</h4>
                 
                 <canvas id="gobo-canvas" width="250" height="250"></canvas>
@@ -345,36 +345,32 @@
                         <option value="rect">Carré</option>
                         <option value="circle">Cercle</option>
                     </select>
-                    <button onclick="clearCanvas()" class="btn-action" style="--btn-color: #FF5252; padding: 5px;"><i class="fas fa-eraser"></i> Clear</button>
+                    <button onclick="clearCanvas()" class="btn-action" style="--btn-color: var(--color-red); padding: 5px;"><i class="fas fa-eraser"></i> Clear</button>
                 </div>
                 
-                <label for="gobo-name" style="margin-top: 15px;">Nom du nouveau Gobo :</label>
-                <input type="text" id="gobo-name" placeholder="Ex: Mon Logo Étoile">
-                
-                <button onclick="createGoboFromCanvas()" class="btn-action" style="--btn-color: var(--color-primary); margin-top: 8px;">
-                    <i class="fas fa-paint-brush"></i> Créer Gobo à partir du Dessin
+                <button onclick="createGoboFromCanvas()" class="btn-action" style="--btn-color: var(--color-crowdglow); margin-top: 10px;">
+                    <i class="fas fa-paint-brush"></i> Créer Gobo
                 </button>
                 
                 <hr style="border-top: 1px dashed var(--color-border); margin: 20px 0;">
 
-                <label for="gobo-upload">Uploader Gobo (Image) :</label>
                 <input type="file" id="gobo-upload" accept="image/*">
                 <button onclick="uploadGobo()" class="btn-action" style="--btn-color: #444; margin-top: 8px;">
-                    <i class="fas fa-upload"></i> Uploader et Ajouter
+                    <i class="fas fa-upload"></i> Uploader Gobo
                 </button>
                 <p id="upload-status" style="font-size: 0.85em; margin-top: 5px; color: var(--color-secondary);"></p>
             </div>
             
             <div class="card" style="--accent-color: #999;">
-                <h4>👥 Gestion des Groupes</h4>
-                <input type="text" id="new-group-name" placeholder="Nom du nouveau groupe (Ex: Groupe C)">
+                <h4>👥 Gestion des Adresses (Groupes)</h4>
+                <input type="text" id="new-group-name" placeholder="Nom du nouveau groupe (Ex: Zone C)">
                 <button onclick="addGroup()" class="btn-action" style="--btn-color: #999;">
-                    <i class="fas fa-plus-circle"></i> Ajouter Groupe
+                    <i class="fas fa-plus-circle"></i> Ajouter Adresse
                 </button>
                 <div id="group-buttons" style="margin-top: 20px;"></div>
                 <hr style="border-top: 1px dashed var(--color-border); margin: 20px 0;">
                 <h5>Actions Rapides:</h5>
-                <p style="font-size: 0.85em; color: var(--color-faint);">Cliquer sur un groupe pour lui envoyer la scène en cours de programmation.</p>
+                <p style="font-size: 0.85em; color: var(--color-faint);">Cliquer sur un groupe pour lui envoyer la palette en cours.</p>
             </div>
     </div>
 
@@ -399,25 +395,27 @@
         let isDrawing = false;
         let startX, startY;
         
+        // PRESETS AVEC ICONES ET COULEURS POUR L'INTERFACE
         const PRESET_LIBRARY = [
-            { name: "Couleur Unie", type: "color", value: "use_color_input" }, 
-            { name: "Effet: Arrêt des Effets/Retour au Noir", type: "effect", value: "OFF" },
-            { name: "Effet: Strobe Couleur Rapide", type: "effect", value: "STROBE_FAST" },
-            { name: "Effet: Strobe Couleur Moyen", type: "effect", value: "STROBE_MEDIUM" },
-            { name: "Effet: Strobe RND (Rythme Aléatoire)", type: "effect", value: "STROBE_RND" }, // Ce preset utilise maintenant le rythme fixe du curseur pour la stabilité.
-            { name: "Effet: Pulse Lent", type: "effect", value: "PULSE_SLOW" },
-            { name: "Gobo: Logo (Exemple)", type: "image", value: "https://via.placeholder.com/200?text=LOGO" },
+            { name: "Couleur Unie", type: "color", value: "use_color_input", icon: "fas fa-palette" }, 
+            { name: "Effet: Arrêt (Noir)", type: "effect", value: "OFF", icon: "fas fa-power-off", bgColor: "#111" },
+            { name: "Effet: Strobe Rapide", type: "effect", value: "STROBE_FAST", icon: "fas fa-bolt", bgColor: "#FFC107" },
+            { name: "Effet: Strobe Moyen", type: "effect", value: "STROBE_MEDIUM", icon: "fas fa-bolt", bgColor: "#FF9800" },
+            { name: "Effet: Strobe RND", type: "effect", value: "STROBE_RND", icon: "fas fa-random", bgColor: "#E91E63" }, 
+            { name: "Effet: Pulse Lent", type: "effect", value: "PULSE_SLOW", icon: "fas fa-heartbeat", bgColor: "#00E676" },
+            { name: "Gobo: Logo (Exemple)", type: "image", value: "https://via.placeholder.com/200?text=LOGO", icon: "fas fa-image" },
         ];
+
 
         // =================================================================
         // PARTIE 1: NAVIGUATION & INITIALISATION
         // =================================================================
         
-        // Fonction pour mettre à jour l'affichage de la fréquence
         function updateFreqValue(prefix) {
             const value = document.getElementById(`strobe-frequency-${prefix}`).value;
             document.getElementById(`freq-value-${prefix}`).innerText = `${value} ms`;
         }
+        
         document.addEventListener("DOMContentLoaded", () => {
              updateFreqValue('timecode');
              updateFreqValue('prog');
@@ -438,7 +436,7 @@
             for (i = 0; i < tablinks.length; i++) {
                 tablinks[i].classList.remove("active");
             }
-            const displayStyle = (tabName === 'Prog') ? 'grid' : 'block'; 
+            const displayStyle = (tabName === 'Prog') ? 'grid' : (tabName === 'LiveSimple' ? 'grid' : 'block'); 
             document.getElementById(tabName).style.display = displayStyle;
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
@@ -449,7 +447,7 @@
         
 
         function initializePresets() {
-            const selectors = [document.getElementById('preset-action'), document.getElementById('prog-action')];
+            const selectors = [document.getElementById('preset-action'), document.getElementById('prog-action'), document.getElementById('prog-action-live')];
             const chaseSelect = document.getElementById('chase-action');
             
             selectors.forEach(select => {
@@ -463,6 +461,12 @@
             PRESET_LIBRARY.filter(p => p.type !== 'image').forEach((item, index) => {
                  chaseSelect.add(new Option(item.name, index));
             });
+            
+            // Pré-sélectionner un effet (Strobe) pour la console LIVE par défaut
+            const strobePreset = PRESET_LIBRARY.findIndex(p => p.value === 'STROBE_FAST');
+            if (strobePreset !== -1) {
+                document.getElementById('prog-action-live').value = strobePreset;
+            }
         }
         
         socket.on('update-count', (data) => { document.getElementById('count').innerText = (data.count - 1) + " connectés"; });
@@ -470,7 +474,7 @@
 
 
         // =================================================================
-        // PARTIE 2: WAVESURFER & TIMECODE (Timeline) - Inclut la correction loadAudio
+        // PARTIE 2: WAVESURFER & TIMECODE (Timeline)
         // =================================================================
         
         function initWavesurfer() {
@@ -509,7 +513,6 @@
             wavesurfer.on('ready', () => { renderTimeline(); });
         }
 
-        // CORRECTION: Utilisation de fetch pour uploader l'audio au serveur avant de charger
         async function loadAudio() {
             const fileInput = document.getElementById('audioFile');
             const file = fileInput.files[0];
@@ -568,7 +571,6 @@
             alert("Synchronisation Timecode lancée !");
         }
         
-        // Fonction pour ajouter un événement (inclut frequency_ms)
         function pushEvent(timeMs, target, type, value, color = null, fade_ms = 0, frequency_ms = 0) {
             timeline.push({ time_ms: timeMs, target, type, value, color: color, fade_ms: fade_ms, frequency_ms: frequency_ms });
             timeline.sort((a, b) => a.time_ms - b.time_ms);
@@ -709,16 +711,17 @@
             }
             
             stopwatchInterval = setInterval(updateStopWatch, 10);
-            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').innerHTML = '<i class="fas fa-pause"></i> PAUSE CHRONO';
-            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').onclick = pauseStopWatch;
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').innerHTML = '<i class="fas fa-pause"></i> PAUSE';
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').onclick = pauseStopWatch;
 
         }
 
         function pauseStopWatch() {
             clearInterval(stopwatchInterval);
             stopwatchInterval = null;
-            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> REPRENDRE CHRONO';
-            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').onclick = startStopWatch;
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> REPRENDRE';
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').onclick = startStopWatch;
+
         }
 
         function resetStopWatch() {
@@ -727,8 +730,8 @@
             startTime = 0;
             elapsedTime = 0;
             document.getElementById('big-time-display').innerText = formatTime(0);
-            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> DÉMARRER CHRONO';
-            document.querySelector('#LiveSimple .card:first-child .btn-action:first-child').onclick = startStopWatch;
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> DÉMARRER';
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').onclick = startStopWatch;
         }
         
         // =================================================================
@@ -758,7 +761,7 @@
                 document.getElementById('new-group-name').value = '';
                 updateGroupSelectors();
             } else if (name) {
-                alert("Ce groupe existe déjà.");
+                alert("Cette adresse/groupe existe déjà.");
             }
         }
         
@@ -775,12 +778,17 @@
             });
         }
 
-        function getProgData() {
-            const presetIndex = parseInt(document.getElementById('prog-action').value);
-            const target = document.getElementById('prog-target').value;
-            const color = document.getElementById('prog-color').value;
+        function getProgData(isLive = false) {
+            const actionId = isLive ? 'prog-action-live' : 'prog-action';
+            const colorId = isLive ? 'prog-color-live' : 'prog-color';
+            const target = isLive ? 'all' : document.getElementById('prog-target').value;
+            
+            // Faders de Fade et Strobe
             const fadeMs = parseInt(document.getElementById('prog-fade-ms').value) || 0; 
             const frequencyMs = parseInt(document.getElementById('strobe-frequency-prog').value) || 0; 
+            
+            const presetIndex = parseInt(document.getElementById(actionId).value);
+            const color = document.getElementById(colorId).value;
             
             const preset = PRESET_LIBRARY[presetIndex]; 
             let finalValue = preset.value;
@@ -792,8 +800,8 @@
             return { target, type: preset.type, value: finalValue, color: finalColor, fade_ms: fadeMs, frequency_ms: frequencyMs }; 
         }
 
-        function previewScene() {
-            const data = getProgData();
+        function previewScene(isLive = false) {
+            const data = getProgData(isLive);
             socket.emit("admin-order", data); 
         }
 
@@ -893,20 +901,21 @@
         }
 
         function createGoboFromCanvas() {
-            const goboName = document.getElementById('gobo-name').value.trim();
-            if (!goboName) return alert("Veuillez nommer votre nouveau Gobo.");
+            const goboName = prompt("Nommez votre nouveau Gobo :");
+            if (!goboName) return;
 
             const dataUrl = canvas.toDataURL('image/png');
             
             const newPreset = {
                 name: `Gobo Dessiné: ${goboName}`,
                 type: "image",
-                value: dataUrl
+                value: dataUrl,
+                icon: "fas fa-image"
             };
             PRESET_LIBRARY.push(newPreset);
             
             initializePresets(); 
-            alert(`✅ Gobo "${goboName}" créé et ajouté aux Presets !`);
+            alert(`✅ Gobo "${goboName}" créé et ajouté aux Palettes !`);
         }
         
         async function uploadGobo() {
@@ -921,14 +930,16 @@
             formData.append('goboFile', file);
 
             try {
-                const response = await fetch('/upload-gobo', { method: 'POST', body: formData });
+                // NOTE: Vous devez avoir un endpoint '/upload-gobo' dans votre server.js
+                const response = await fetch('/upload-gobo', { method: 'POST', body: formData }); 
                 const data = await response.json();
 
                 if (data.success) {
                     const newPreset = {
                         name: `Gobo Upload: ${file.name.substring(0, 20)}`,
                         type: "image",
-                        value: data.url
+                        value: data.url,
+                        icon: "fas fa-image"
                     };
                     PRESET_LIBRARY.push(newPreset);
                     initializePresets(); 
@@ -943,8 +954,20 @@
 
 
         // =================================================================
-        // PARTIE 6: MODE LIVE (Manuel) - Cues
+        // PARTIE 6: MODE LIVE (Manuel) - Cues (Esthétique Palette)
         // =================================================================
+        
+        // Utilité pour vérifier si une couleur est claire (pour choisir la couleur du texte)
+        function isColorLight(hex) {
+            if (hex.startsWith('use_')) return false; 
+            const color = hex.substring(1); 
+            const r = parseInt(color.substring(0, 2), 16);
+            const g = parseInt(color.substring(2, 4), 16);
+            const b = parseInt(color.substring(4, 6), 16);
+            const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            return yiq >= 128; 
+        }
+
 
         function renderLiveButtons() {
             const grid = document.getElementById('live-grid');
@@ -953,8 +976,8 @@
             const cueNames = Object.keys(scenes).sort();
             
             if (cueNames.length === 0) {
-                grid.innerHTML = `<p style="color: var(--color-secondary); grid-column: 1 / -1; text-align: center;">
-                    Aucun CUE enregistré. Créez-en dans l'onglet PROGRAMMATION !
+                grid.innerHTML = `<p style="color: var(--color-secondary); grid-column: 1 / -1; text-align: center; padding: 20px;">
+                    Aucun CUE enregistré. Enregistrez des palettes dans l'onglet PALETTE & MÉMOIRE !
                 </p>`;
                 return;
             }
@@ -965,19 +988,44 @@
                 btn.className = 'live-cue-button btn-action';
                 
                 let bgColor = (cue.type === 'color' || cue.type === 'effect') ? cue.value : (cue.color || '#333');
-                if (bgColor.toLowerCase() === 'off' || bgColor.toLowerCase() === '#000000') bgColor = '#181818'; 
+                
+                // Styles spécifiques pour les effets Strobes/Pulse
+                if (cue.value.startsWith('STROBE') || cue.value === 'PULSE_SLOW') {
+                    const presetData = PRESET_LIBRARY.find(p => p.value === cue.value);
+                    bgColor = presetData?.bgColor || cue.color || '#FFC107'; 
+                }
+
+                // Si la couleur est noire/OFF, utiliser un gris foncé pour contraste
+                if (bgColor.toLowerCase() === '#000000' || bgColor.toLowerCase() === 'off') {
+                    bgColor = '#181818';
+                }
                 
                 btn.style.setProperty('--btn-color', bgColor);
-                btn.style.color = (bgColor === '#FFFFFF' || bgColor === 'white') ? '#121212' : 'white';
+                
+                // Choisir la couleur du texte (Noir si fond clair, Blanc si fond foncé)
+                const isLight = isColorLight(bgColor);
+                btn.style.color = isLight ? '#121212' : 'white';
+                
+                // Construction du contenu
+                let iconClass = 'fas fa-lightbulb'; 
+                let statusText = `${cue.target}`;
 
-                let statusText = `${cue.target} | ${cue.type.toUpperCase()} | ${cue.fade_ms}ms`;
+                const presetFound = PRESET_LIBRARY.find(p => p.type === cue.type && (p.value === cue.value || p.type === 'color'));
+                if (presetFound) iconClass = presetFound.icon || 'fas fa-lightbulb';
+
                 if (cue.value.startsWith('STROBE')) {
-                     let strobeType = (cue.value === 'STROBE_RND') ? 'RND' : 'RÉGULIER';
-                     statusText = `STROBE ${strobeType} | ${cue.frequency_ms}ms | ${cue.target}`;
+                     statusText = `Strobe ${cue.frequency_ms}ms | ${cue.target}`;
+                     iconClass = 'fas fa-bolt';
+                } else if (cue.type === 'color' || cue.type === 'effect') {
+                     statusText = `Couleur | ${cue.fade_ms}ms | ${cue.target}`;
+                } else if (cue.type === 'image') {
+                     statusText = `Gobo | ${cue.target}`;
+                     iconClass = 'fas fa-image';
                 }
 
 
                 btn.innerHTML = `
+                    <i class="${iconClass}" style="margin-right: 5px;"></i>
                     ${name.toUpperCase()}
                     <div class="cue-status">
                         ${statusText}
