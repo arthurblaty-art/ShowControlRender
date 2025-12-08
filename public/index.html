@@ -108,6 +108,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // CHANGEZ CETTE LIGNE pour chaque appareil client (Groupe A, Groupe B, etc.)
         let CLIENT_GROUP = 'Groupe A'; 
 
         const socket = io();
@@ -133,13 +134,15 @@
             connectionMessage.style.borderColor = '#4CAF50';
             connectionMessage.style.opacity = 1;
             
-            // Afficher le message d'accueil et le cacher après 10s
             contentDiv.style.opacity = 1;
             setTimeout(() => {
                 connectionMessage.style.opacity = 0;
             }, 10000); 
 
             socket.emit('client-group', { group: CLIENT_GROUP });
+            
+            // Affichage du groupe client
+            contentDiv.querySelector('p:last-child').innerText = `Client: ${CLIENT_GROUP}`;
         });
 
         socket.on('disconnect', () => {
@@ -152,7 +155,7 @@
         });
 
         // ===================================
-        // Logique Strobe Corrigée (V3 : Stable et Forcée)
+        // Logique Strobe Corrigée (V5 : RND et Alterné)
         // ===================================
         
         function stopStrobe() {
@@ -166,31 +169,57 @@
             document.body.style.transition = 'background-color 0.5s ease'; 
         }
         
-        // Fonction pour démarrer le Strobe
+        // Fonction pour démarrer le Strobe (gestion RND et ALT ajoutée)
         function startStrobe(data) {
             stopStrobe(); 
             
-            const totalCycleMs = data.frequency_ms || 100;
-            // Intervalle = Moitié du temps de cycle
-            const intervalMs = Math.max(20, Math.floor(totalCycleMs / 2)); 
-
+            // maxCycleMs est la fréquence FIXE du preset, ou la fréquence MAX pour RND
+            const maxCycleMs = data.frequency_ms || 100;
             const flashColor = data.color || '#FFFFFF'; 
             const body = document.body;
             let isOn = false;
+            
+            // Détecter les types d'effets basés sur le clignotement
+            const isRandom = data.value.startsWith('STROBE_RND'); 
+            const isAltColor = data.value === 'STROBE_SLOW_ALT'; 
+            
+            // Définir la couleur alternative (Blanc pour STROBE_SLOW_ALT)
+            const altColor = '#FFFFFF'; 
 
             // TRÈS IMPORTANT: Désactiver toutes transitions pour le clignotement instantané
             body.style.transition = 'none';
+            
+            // Calculer l'intervalle initial (durée ON ou OFF)
+            let initialInterval = maxCycleMs / 2;
 
-            strobeInterval = setInterval(() => {
+            // Fonction qui gère le clignotement et la récursivité RND
+            function strobeLoop() {
+                // 1. Déterminer l'état (ON/OFF)
                 if (isOn) {
-                    body.style.backgroundColor = '#000000'; // Éteint
+                    // ÉTAT OFF
+                    if (isAltColor) {
+                        body.style.backgroundColor = altColor; // Couleur Alternative (Blanc)
+                    } else {
+                        body.style.backgroundColor = '#000000'; // Noir (OFF)
+                    }
                 } else {
-                    body.style.backgroundColor = flashColor; // Allumé
+                    // ÉTAT ON
+                    body.style.backgroundColor = flashColor; // Couleur Principale
                 }
                 isOn = !isOn;
                 
-            }, intervalMs);
+                // 2. Ajuster le prochain intervalle si c'est aléatoire (RND)
+                if (isRandom) {
+                    const minInterval = 20;
+                    const randomInterval = Math.max(minInterval, Math.floor(Math.random() * (maxCycleMs / 2)));
+                    
+                    // Réinitialisation de l'intervalle avec la nouvelle valeur aléatoire
+                    clearInterval(strobeInterval); 
+                    strobeInterval = setInterval(strobeLoop, randomInterval); 
+                }
+            }
 
+            strobeInterval = setInterval(strobeLoop, initialInterval);
             isStrobing = true;
         }
 
@@ -213,7 +242,7 @@
             // Gérer le cas du STROBE immédiatement
             if (data.type === 'effect' && data.value.startsWith('STROBE')) {
                 startStrobe(data); 
-                return; // Sortir pour ne pas écraser la transition et le background
+                return; 
             }
             
             // Si ce n'est PAS un STROBE, on définit la transition normale
@@ -241,8 +270,11 @@
                         body.style.backgroundColor = '#000000';
                         body.style.filter = 'none';
                     } else if (data.value === 'PULSE_SLOW') {
+                         // Le pulse utilise le fade_ms comme durée de transition
                          body.style.backgroundColor = data.color || '#00ff00'; 
                          body.style.filter = 'saturate(50%)';
+                         body.style.transition = `background-color ${duration}ms ease-in-out`; // Utiliser le fade_ms pour le Pulse
+                         // NOTE: Le Pulse n'est pas programmé en boucle côté client pour le moment, il faut le déclencher plusieurs fois.
                     }
                     break;
 
