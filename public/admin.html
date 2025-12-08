@@ -84,7 +84,7 @@
         .btn-action:hover { filter: brightness(1.1); }
         .btn-action:active { transform: scale(0.99); }
         
-        /* FADERS (Inspiration DMX) */
+        /* FADERS */
         input[type="range"] {
             -webkit-appearance: none;
             height: 10px;
@@ -94,23 +94,17 @@
             cursor: pointer;
             box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
         }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 25px; 
-            border-radius: 3px;
-            background: var(--color-crowdglow);
-            cursor: pointer;
-            border: 1px solid #FFF;
+        /* Masquer les faders strobe (Utilisation des fréquences fixes par Preset) */
+        #strobe-fader-group-timeline, #strobe-fader-group-live {
+            display: none; 
         }
+        
         .fader-group { 
             margin-top: 15px; 
             padding: 8px; 
             background: #121212; 
             border-radius: 4px;
         }
-        .fader-group label { margin-top: 5px; }
 
         /* NAVIGATION PAR ONGLET */
         #tabs { display: flex; border-bottom: 2px solid var(--color-border); margin-bottom: 15px; }
@@ -132,7 +126,7 @@
             font-weight: 700;
         }
         
-        /* DISPOSITION PRINCIPALE (CrowdGlow Broadcast App Style) */
+        /* DISPOSITION PRINCIPALE */
         #Prog { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 15px; }
         #LiveSimple { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; } 
 
@@ -180,6 +174,7 @@
     </style>
 </head>
 <body>
+    
     <h3>💡 CONSOLE SPECTACLE PRO <span id="count">1 connecté</span></h3>
 
     <div id="tabs">
@@ -226,7 +221,7 @@
                 <label for="preset-action">PALETTE ACTION :</label>
                 <select id="preset-action"></select>
 
-                <div class="fader-group">
+                <div class="fader-group" id="strobe-fader-group-timeline">
                     <label for="strobe-frequency">FADER STROBE (ms) :</label>
                     <div id="freq-label">
                         <span id="freq-value-timecode">100 ms</span>
@@ -253,9 +248,10 @@
                 <div><label for="chase-group-2">Arrivée :</label><select id="chase-group-2"></select></div>
                 <div><label for="chase-delay-ms">Délay (ms) :</label><input type="number" id="chase-delay-ms" value="100" placeholder="100"></div>
             </div>
-            <select id="chase-action" style="margin-top: 10px;"></select>
+            <label for="chase-action">ACTION SÉQUENCE :</label>
+            <select id="chase-action"></select>
             <button onclick="addChaseEvent()" class="btn-action" style="--btn-color: #17a2b8; margin-top: 10px;">
-                <i class="fas fa-share-alt"></i> Ajouter Séquence Délay
+                <i class="fas fa-share-alt"></i> Ajouter Séquence Délay / Flash Alterné
             </button>
         </div>
     </div>
@@ -283,7 +279,7 @@
                 <label for="prog-action-live">ACTION FLASH :</label>
                 <select id="prog-action-live"></select>
                 
-                <div class="fader-group">
+                <div class="fader-group" id="strobe-fader-group-live">
                     <label for="strobe-frequency-prog">FADER STROBE (ms) :</label>
                     <div id="freq-label">
                         <span id="freq-value-prog">100 ms</span>
@@ -395,13 +391,22 @@
         let isDrawing = false;
         let startX, startY;
         
-        // PRESETS AVEC ICONES ET COULEURS POUR L'INTERFACE
+        // PRESETS AVEC FRÉQUENCES FIXES POUR STROBE (V5)
         const PRESET_LIBRARY = [
             { name: "Couleur Unie", type: "color", value: "use_color_input", icon: "fas fa-palette" }, 
             { name: "Effet: Arrêt (Noir)", type: "effect", value: "OFF", icon: "fas fa-power-off", bgColor: "#111" },
-            { name: "Effet: Strobe Rapide", type: "effect", value: "STROBE_FAST", icon: "fas fa-bolt", bgColor: "#FFC107" },
-            { name: "Effet: Strobe Moyen", type: "effect", value: "STROBE_MEDIUM", icon: "fas fa-bolt", bgColor: "#FF9800" },
-            { name: "Effet: Strobe RND", type: "effect", value: "STROBE_RND", icon: "fas fa-random", bgColor: "#E91E63" }, 
+            // Niveaux de STROBE Réguliers (Fréquence fixe)
+            { name: "Effet: Strobe RAPIDE", type: "effect", value: "STROBE_FAST", icon: "fas fa-bolt", bgColor: "#FFC107", frequency_ms: 100 },
+            { name: "Effet: Strobe MOYEN", type: "effect", value: "STROBE_MEDIUM", icon: "fas fa-bolt", bgColor: "#FF9800", frequency_ms: 250 },
+            { name: "Effet: Strobe LENT", type: "effect", value: "STROBE_SLOW", icon: "fas fa-bolt", bgColor: "#FF5252", frequency_ms: 500 },
+            // Niveaux de STROBE Aléatoires (Fréquence Max)
+            { name: "Effet: RND Rapide", type: "effect", value: "STROBE_RND_FAST", icon: "fas fa-random", bgColor: "#E91E63", frequency_ms: 100 }, 
+            { name: "Effet: RND Lent", type: "effect", value: "STROBE_RND_SLOW", icon: "fas fa-random", bgColor: "#9C27B0", frequency_ms: 500 }, 
+            
+            // NOUVEAUX EFFETS FLASH
+            { name: "Effet: Flash Alterné (Chase)", type: "effect", value: "FLASH_ALT", icon: "fas fa-exchange-alt", bgColor: "#00E676" },
+            { name: "Effet: Strobe Alterné Lent (Couleur/Blanc)", type: "effect", value: "STROBE_SLOW_ALT", icon: "fas fa-retweet", bgColor: "#18FFFF", frequency_ms: 500 }, 
+            
             { name: "Effet: Pulse Lent", type: "effect", value: "PULSE_SLOW", icon: "fas fa-heartbeat", bgColor: "#00E676" },
             { name: "Gobo: Logo (Exemple)", type: "image", value: "https://via.placeholder.com/200?text=LOGO", icon: "fas fa-image" },
         ];
@@ -411,14 +416,10 @@
         // PARTIE 1: NAVIGUATION & INITIALISATION
         // =================================================================
         
-        function updateFreqValue(prefix) {
-            const value = document.getElementById(`strobe-frequency-${prefix}`).value;
-            document.getElementById(`freq-value-${prefix}`).innerText = `${value} ms`;
-        }
+        // La fonction updateFreqValue et les faders sont maintenant désactivés/masqués 
+        // car la fréquence est lue directement depuis la PRESET_LIBRARY.
         
         document.addEventListener("DOMContentLoaded", () => {
-             updateFreqValue('timecode');
-             updateFreqValue('prog');
              document.getElementById('Timecode').style.display = "block"; 
              initCanvas();
              initializePresets();
@@ -577,50 +578,97 @@
             renderTimeline();
         }
         
+        // MISE À JOUR : utilise la fréquence fixe du Preset
         function addEvent() {
             const timeMs = parseInt(document.getElementById('event-time-ms').value);
             const target = document.getElementById('event-target').value;
             const presetIndex = parseInt(document.getElementById('preset-action').value);
             const filterColor = document.getElementById('gobo-filter-color').value;
             const fadeMs = parseInt(document.getElementById('fade-time-ms').value) || 0; 
-            const frequencyMs = parseInt(document.getElementById('strobe-frequency-timecode').value) || 0; 
+            
+            const preset = PRESET_LIBRARY[presetIndex]; 
+            const frequencyMs = preset.frequency_ms || 0; 
 
             if (isNaN(timeMs)) return alert("Entrez un temps en millisecondes valide.");
             
-            const preset = PRESET_LIBRARY[presetIndex]; 
             let finalValue = preset.value;
             let finalColor = null;
 
-            if (preset.type === 'color' || preset.type === 'effect') { finalValue = filterColor; }
+            if (preset.type === 'color' || preset.type === 'effect') { 
+                finalValue = filterColor; 
+                if (preset.value.startsWith('STROBE')) { 
+                    finalValue = preset.value; 
+                    finalColor = filterColor; 
+                }
+            }
             if (preset.type === 'image') { finalColor = filterColor; }
             
             pushEvent(timeMs, target, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
         }
 
+        // MISE À JOUR : Logique spécifique pour FLASH_ALT
         function addChaseEvent() {
             const timeMs = parseInt(document.getElementById('event-time-ms').value);
             const delayMs = parseInt(document.getElementById('chase-delay-ms').value);
             const presetIndex = parseInt(document.getElementById('chase-action').value);
             const filterColor = document.getElementById('gobo-filter-color').value;
             const fadeMs = parseInt(document.getElementById('fade-time-ms').value) || 0; 
-            const frequencyMs = parseInt(document.getElementById('strobe-frequency-timecode').value) || 0; 
+            
+            const preset = PRESET_LIBRARY[presetIndex];
+            const frequencyMs = preset.frequency_ms || 0; 
+            
             const target1 = document.getElementById('chase-group-1').value; 
             const target2 = document.getElementById('chase-group-2').value; 
 
             if (isNaN(timeMs) || isNaN(delayMs)) return alert("Entrez des valeurs de temps valides.");
             if (target1 === target2) return alert("Les groupes de départ et d'arrivée doivent être différents pour un effet Chase.");
             
-            const preset = PRESET_LIBRARY[presetIndex];
             let finalValue = preset.value;
             let finalColor = null;
 
-            if (preset.type === 'color' || preset.type === 'effect') { finalValue = filterColor; }
+            if (preset.type === 'color' || preset.type === 'effect') { 
+                finalValue = filterColor; 
+                if (preset.value.startsWith('STROBE')) { 
+                    finalValue = preset.value; 
+                    finalColor = filterColor; 
+                }
+            }
             if (preset.type === 'image') { finalColor = filterColor; }
             
-            pushEvent(timeMs, target1, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
-            pushEvent(timeMs + delayMs, target2, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
+            // **********************************
+            // LOGIQUE FLASH_ALT/CHASE (Alternance)
+            // **********************************
+            if (preset.value === 'FLASH_ALT') {
+                 const flashColor = filterColor; 
+                 const offFade = 0; // Transitions instantanées pour le flash ON/OFF
+                 
+                 // Séquence de 3 alternances rapides
+                 
+                 // T0: Allumer T1, Éteindre T2
+                 pushEvent(timeMs, target1, 'color', flashColor, null, offFade, 0);
+                 pushEvent(timeMs, target2, 'effect', 'OFF', null, offFade, 0);
 
-            alert(`Séquence Délay (${delayMs}ms) ajoutée.`);
+                 // T + Delay: Éteindre T1, Allumer T2
+                 pushEvent(timeMs + delayMs, target1, 'effect', 'OFF', null, offFade, 0);
+                 pushEvent(timeMs + delayMs, target2, 'color', flashColor, null, offFade, 0);
+
+                 // T + Delay*2: Allumer T1, Éteindre T2
+                 pushEvent(timeMs + (delayMs * 2), target1, 'color', flashColor, null, offFade, 0);
+                 pushEvent(timeMs + (delayMs * 2), target2, 'effect', 'OFF', null, offFade, 0);
+
+                 // T + Delay*3: Éteindre T1 (Fin de séquence)
+                 pushEvent(timeMs + (delayMs * 3), target1, 'effect', 'OFF', null, offFade, 0);
+                 
+                 alert(`Séquence Flash Alterné (${delayMs}ms x 3) ajoutée sur ${target1}/${target2}.`);
+                 return;
+
+            } else {
+                // Logique Chase normale pour tous les autres presets
+                pushEvent(timeMs, target1, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
+                pushEvent(timeMs + delayMs, target2, preset.type, finalValue, finalColor, fadeMs, frequencyMs);
+                
+                alert(`Séquence Délay (${delayMs}ms) ajoutée.`);
+            }
         }
         
         function removeEvent(index) {
@@ -645,15 +693,17 @@
                     
                     details = colorDisplay;
                     if (event.value.startsWith('STROBE')) { 
-                         let strobeType = (event.value === 'STROBE_RND') ? 'RND' : 'RÉGULIER';
-                         details = `STROBE (${strobeType}: ${event.frequency_ms}ms) sur ${event.color}`;
+                         let strobeType = (event.value.startsWith('STROBE_RND')) ? 'RND' : (event.value.endsWith('_ALT') ? 'ALT' : 'RÉGULIER');
+                         details = `STROBE (${strobeType}: ${event.frequency_ms}ms Max) sur ${event.color}`;
+                    } else if (event.value === 'FLASH_ALT') {
+                         details = `FLASH ALT (Chase) sur ${event.color}`;
                     }
                     
-                    markerColor = event.color;
+                    markerColor = event.color || '#B0B0B0';
                 } else if (event.type === 'image') {
                     const goboName = PRESET_LIBRARY.find(p => p.value === event.value)?.name || 'Gobo Custom';
                     details = `GOBO: ${goboName.split(':').pop().trim()}`;
-                    markerColor = event.color;
+                    markerColor = event.color || '#B0B0B0';
                 }
                 
                 const div = document.createElement('div');
@@ -712,7 +762,7 @@
             
             stopwatchInterval = setInterval(updateStopWatch, 10);
             document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').innerHTML = '<i class="fas fa-pause"></i> PAUSE';
-            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').onclick = pauseStopWatch;
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').style.setProperty('--btn-color', '#FF5252');
 
         }
 
@@ -720,7 +770,7 @@
             clearInterval(stopwatchInterval);
             stopwatchInterval = null;
             document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> REPRENDRE';
-            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').onclick = startStopWatch;
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').style.setProperty('--btn-color', '#4CAF50');
 
         }
 
@@ -731,7 +781,8 @@
             elapsedTime = 0;
             document.getElementById('big-time-display').innerText = formatTime(0);
             document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').innerHTML = '<i class="fas fa-play"></i> DÉMARRER';
-            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').onclick = startStopWatch;
+            document.querySelector('#LiveSimple .card:nth-child(2) .btn-action:first-child').style.setProperty('--btn-color', '#4CAF50');
+
         }
         
         // =================================================================
@@ -778,26 +829,47 @@
             });
         }
 
+        // MISE À JOUR : Lit la fréquence fixe du Preset
         function getProgData(isLive = false) {
             const actionId = isLive ? 'prog-action-live' : 'prog-action';
             const colorId = isLive ? 'prog-color-live' : 'prog-color';
             const target = isLive ? 'all' : document.getElementById('prog-target').value;
             
-            // Faders de Fade et Strobe
             const fadeMs = parseInt(document.getElementById('prog-fade-ms').value) || 0; 
-            const frequencyMs = parseInt(document.getElementById('strobe-frequency-prog').value) || 0; 
             
             const presetIndex = parseInt(document.getElementById(actionId).value);
-            const color = document.getElementById(colorId).value;
+            const colorInput = document.getElementById(colorId).value; 
             
             const preset = PRESET_LIBRARY[presetIndex]; 
             let finalValue = preset.value;
-            let finalColor = null;
+            let finalColor = colorInput; 
+            let finalType = preset.type;
+            
+            // Fréquence du Strobe : Définie par le Preset, sinon 0.
+            const frequencyMs = preset.frequency_ms || 0; 
 
-            if (preset.type === 'color' || preset.type === 'effect') { finalValue = color; }
-            if (preset.type === 'image') { finalColor = color; }
+            // LOGIQUE CIBLÉE POUR LES EFFETS (y compris Strobe)
+            if (finalValue.startsWith('STROBE') || finalValue === 'FLASH_ALT') {
+                 finalType = 'effect'; 
+                 finalValue = finalValue; 
+                 finalColor = colorInput; 
+            }
+            // Si c'est une couleur unie, la valeur est la couleur
+            else if (finalType === 'color') { finalValue = colorInput; }
+            
+            // Pour les Gobos, la valeur est l'URL de l'image, et la couleur est la couleur de fond
+            else if (finalType === 'image') { finalColor = colorInput; }
 
-            return { target, type: preset.type, value: finalValue, color: finalColor, fade_ms: fadeMs, frequency_ms: frequencyMs }; 
+            const dataToSend = { 
+                target, 
+                type: finalType, 
+                value: finalValue, 
+                color: finalColor, 
+                fade_ms: fadeMs, 
+                frequency_ms: frequencyMs 
+            };
+            
+            return dataToSend; 
         }
 
         function previewScene(isLive = false) {
@@ -829,7 +901,9 @@
         // =================================================================
         // PARTIE 5: GOBOS DESIGNER (DESSIN & UPLOAD)
         // =================================================================
-
+        
+        // (Logique Canvas de Dessin/Upload inchangée - Laisser telle quelle)
+        // ... (omitted for brevity, keep the original canvas drawing/upload logic) ...
         function initCanvas() {
             ctx.fillStyle = '#121212';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -843,10 +917,7 @@
 
         function getMousePos(e) {
             const rect = canvas.getBoundingClientRect();
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
         }
 
         canvas.addEventListener('mousedown', (e) => {
@@ -875,7 +946,6 @@
 
         canvas.addEventListener('mouseup', (e) => {
             if (!isDrawing) return;
-            isDrawing = false;
             const pos = getMousePos(e);
             const mode = document.getElementById('draw-mode').value;
             
@@ -893,6 +963,7 @@
                     ctx.stroke();
                 }
             }
+            isDrawing = false;
         });
         
         function clearCanvas() {
@@ -930,7 +1001,6 @@
             formData.append('goboFile', file);
 
             try {
-                // NOTE: Vous devez avoir un endpoint '/upload-gobo' dans votre server.js
                 const response = await fetch('/upload-gobo', { method: 'POST', body: formData }); 
                 const data = await response.json();
 
@@ -957,7 +1027,7 @@
         // PARTIE 6: MODE LIVE (Manuel) - Cues (Esthétique Palette)
         // =================================================================
         
-        // Utilité pour vérifier si une couleur est claire (pour choisir la couleur du texte)
+        // (Logique des Boutons Live/Cues inchangée - Laisser telle quelle)
         function isColorLight(hex) {
             if (hex.startsWith('use_')) return false; 
             const color = hex.substring(1); 
@@ -990,7 +1060,7 @@
                 let bgColor = (cue.type === 'color' || cue.type === 'effect') ? cue.value : (cue.color || '#333');
                 
                 // Styles spécifiques pour les effets Strobes/Pulse
-                if (cue.value.startsWith('STROBE') || cue.value === 'PULSE_SLOW') {
+                if (cue.value.startsWith('STROBE') || cue.value === 'PULSE_SLOW' || cue.value === 'FLASH_ALT') {
                     const presetData = PRESET_LIBRARY.find(p => p.value === cue.value);
                     bgColor = presetData?.bgColor || cue.color || '#FFC107'; 
                 }
@@ -1014,8 +1084,12 @@
                 if (presetFound) iconClass = presetFound.icon || 'fas fa-lightbulb';
 
                 if (cue.value.startsWith('STROBE')) {
-                     statusText = `Strobe ${cue.frequency_ms}ms | ${cue.target}`;
+                     let strobeType = (cue.value.startsWith('STROBE_RND')) ? 'RND' : (cue.value.endsWith('_ALT') ? 'ALT' : 'RÉGULIER');
+                     statusText = `${strobeType}: ${cue.frequency_ms}ms Max | ${cue.target}`;
                      iconClass = 'fas fa-bolt';
+                } else if (cue.value === 'FLASH_ALT') {
+                     statusText = `FLASH ALT (CHASE) | ${cue.target}`;
+                     iconClass = 'fas fa-exchange-alt';
                 } else if (cue.type === 'color' || cue.type === 'effect') {
                      statusText = `Couleur | ${cue.fade_ms}ms | ${cue.target}`;
                 } else if (cue.type === 'image') {
@@ -1040,6 +1114,9 @@
             const data = scenes[cueName];
             if (!data) return;
             
+            // Pour les CUEs déclenchés en LIVE, on envoie directement l'ordre au serveur
+            // Les CUEs Chase/FLASH_ALT ne sont pas optimaux pour le LIVE, il vaut mieux utiliser la Timeline.
+            // Pour l'instant, on laisse le comportement normal pour ne pas surcharger la fonction triggerCue.
             socket.emit("admin-order", data);
             
             console.log(`CUE LIVE déclenché : ${cueName}`);
